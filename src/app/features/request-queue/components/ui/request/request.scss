@@ -1,0 +1,54 @@
+@use "tailwindcss";
+
+:host {
+  display: block;
+}
+
+.rq-card-inner.selected {
+  outline: 2px solid var(--blue-400, #60a5fa);
+  outline-offset: 2px;
+}
+
+.rq-status {
+  box-shadow: var(--inset-highlight, inset 0 1px 0 rgba(255,255,255,0.4));
+  background-clip: padding-box;
+  text-transform: capitalize;
+}
+
+/* State visuals */
+.rq-status.pending,
+.rq-status.processing {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--warning, #fbbf24) 8%, white 92%) 0%,
+    color-mix(in srgb, var(--warning, #fbbf24) 12%, white 88%) 100%
+  );
+  color: var(--warning-600, #b45309);
+  border: 1px solid var(--warning-border, #f59e0b40);
+}
+
+.rq-status.done {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--success, #34d399) 8%, white 92%) 0%,
+    color-mix(in srgb, var(--success, #34d399) 12%, white 88%) 100%
+  );
+  color: var(--success-600, #047857);
+  border: 1px solid var(--success-border, #10b98140);
+}
+
+.rq-status.error {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--danger, #f87171) 8%, white 92%) 0%,
+    color-mix(in srgb, var(--danger, #f87171) 12%, white 88%) 100%
+  );
+  color: var(--danger-600, #b91c1c);
+  border: 1px solid var(--danger-border, #ef444440);
+}
+
+@media (max-width: 640px) {
+  .rq-status {
+    min-width: auto;
+  }
+}

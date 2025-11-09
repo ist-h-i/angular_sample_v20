@@ -1,0 +1,230 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import type { InitialData } from '../models/initial-data.model';
+import type { RequestSummary } from '../models/request-summary.model';
+import type { RequestDetail } from '../models/request.model';
+import type { RequestStatus } from '../models/request-status.model';
+import type { User } from '../models/user.model';
+
+export interface CreateRequestPayload {
+  query_text: string;
+  request_history_id?: string;
+}
+
+export interface CreateRequestResponse {
+  request_id: string;
+  submitted_at: string;
+  status_url: string;
+  result_url: string;
+}
+
+export interface RequestStatusResponse {
+  request_id: string;
+  status: RequestStatus;
+  last_updated?: string;
+  updated_at?: string;
+}
+
+@Injectable({ providedIn: 'root' })
+export class ApiService {
+  constructor(private readonly http: HttpClient) {}
+
+  // --- Mock setup (moved from facade) ---
+  // Toggle to switch between mock and real API per method
+  private readonly useMock = true;
+
+  private mockRequests: Record<string, RequestSummary> = {
+    'req-1001': {
+      request_id: 'req-1001',
+      title: 'Research: Angular v20 signals best practices',
+      snippet: 'Investigate usage patterns and migration notes... ',
+      status: 'processing',
+      last_updated: new Date().toISOString(),
+    },
+    'req-1002': {
+      request_id: 'req-1002',
+      title: 'Summarize latest DX docs',
+      snippet: 'Collect highlights from recent articles...',
+      status: 'pending',
+      last_updated: new Date().toISOString(),
+    },
+  };
+
+  private mockDetails: Record<string, RequestDetail> = {
+    'req-1001': {
+      request_id: 'req-1001',
+      title: 'Research: Angular v20 signals best practices',
+      query_text: 'Summarize Angular v20 signals best practices',
+      status: 'processing',
+      last_updated: new Date().toISOString(),
+      // messages will appear when completed
+    },
+    'req-1002': {
+      request_id: 'req-1002',
+      title: 'Summarize latest DX docs',
+      query_text: 'Summarize latest developer experience docs',
+      status: 'pending',
+      last_updated: new Date().toISOString(),
+    },
+  };
+
+  private mockUser: User = {
+    id: '1012835',
+    name_initial: 'TY',
+    name_full: 'Taro Yamada',
+    is_admin: true,
+    is_support: false,
+  };
+
+  private promote(s: RequestStatus): RequestStatus {
+    if (s === 'pending') return Math.random() > 0.6 ? 'processing' : 'pending';
+    if (s === 'processing') return Math.random() > 0.7 ? 'completed' : 'processing';
+    return s;
+  }
+
+  // GET /initial-data
+  getInitialData(): Observable<InitialData> {
+    if (this.useMock) {
+      const request_histories = Object.values(this.mockRequests).map((s) => ({
+        request_history_id: s.request_id,
+        title: s.title,
+        status: s.status,
+        last_updated: s.last_updated,
+      }));
+      return of({ user: this.mockUser, request_histories });
+    }
+    return this.http.get<InitialData>('/initial-data');
+  }
+
+  // POST /requests
+  createRequest(payload: CreateRequestPayload): Observable<CreateRequestResponse> {
+    if (this.useMock) {
+      const id = `req-${Date.now()}`;
+      const now = new Date().toISOString();
+      const title = payload.query_text?.slice(0, 48) || 'New Request';
+      // add to summaries
+      this.mockRequests[id] = {
+        request_id: id,
+        title,
+        snippet: payload.query_text || '',
+        status: 'pending',
+        last_updated: now,
+      };
+      // add to details
+      this.mockDetails[id] = {
+        request_id: id,
+        title,
+        query_text: payload.query_text || '',
+        status: 'pending',
+        last_updated: now,
+      };
+      return of({
+        request_id: id,
+        submitted_at: now,
+        status_url: `/requests/${id}/status`,
+        result_url: `/requests/${id}/result`,
+      });
+    }
+    return this.http.post<CreateRequestResponse>('/requests', payload);
+  }
+
+  // GET /requests/status ? list of lightweight summaries for the current user
+  getRequestsStatus(): Observable<RequestSummary[]> {
+    if (this.useMock) {
+      const next: Record<string, RequestSummary> = {};
+      for (const [id, r] of Object.entries(this.mockRequests)) {
+        const status = this.promote(r.status);
+        next[id] = { ...r, status, last_updated: new Date().toISOString() };
+      }
+      this.mockRequests = next;
+      return of(Object.values(this.mockRequests));
+    }
+    return this.http.get<RequestSummary[]>('/requests/status');
+  }
+
+  // GET /requests/{id}
+  getRequestById(id: string): Observable<RequestDetail> {
+    if (this.useMock) {
+      const summary = this.mockRequests[id];
+      const base = this.mockDetails[id];
+      if (!summary || !base) {
+        // minimal not found-ish behavior: pending detail with unknowns
+        return of({
+          request_id: id,
+          title: 'Unknown Request',
+          query_text: '',
+          status: 'failed',
+          last_updated: new Date().toISOString(),
+        });
+      }
+      // reflect latest status from summary
+      const detail: RequestDetail = {
+        ...base,
+        status: summary.status,
+        last_updated: summary.last_updated,
+      };
+      // When completed, ensure messages exist
+      if (detail.status === 'completed' && !detail.messages) {
+        const ts = new Date().toISOString();
+        detail.messages = [
+          { role: 'user', content: base.query_text, timestamp: ts },
+          {
+            role: 'assistant',
+            content: 'Here is the summarized content with key points and references.',
+            timestamp: ts,
+            annotations: [
+              {
+                url: 'https://example.com/article',
+                title: 'Example Article',
+                snippet: 'Excerpt from the source',
+              },
+            ],
+          },
+        ];
+      }
+      return of(detail);
+    }
+    return this.http.get<RequestDetail>(`/requests/${encodeURIComponent(id)}`);
+  }
+
+  // GET /requests/{id}/status
+  getRequestStatusById(id: string): Observable<RequestStatusResponse> {
+    if (this.useMock) {
+      const cur = this.mockRequests[id];
+      if (!cur) {
+        // When not found, simulate 404-like response by keeping status as failed
+        return of({ request_id: id, status: 'failed', last_updated: new Date().toISOString() });
+      }
+      const nextStatus: RequestStatus = this.promote(cur.status);
+      const updated = { ...cur, status: nextStatus, last_updated: new Date().toISOString() };
+      this.mockRequests[id] = updated;
+      const detail = this.mockDetails[id];
+      if (detail) {
+        detail.status = nextStatus;
+        detail.last_updated = updated.last_updated;
+        if (nextStatus === 'completed' && !detail.messages) {
+          const ts = new Date().toISOString();
+          detail.messages = [
+            { role: 'user', content: detail.query_text, timestamp: ts },
+            {
+              role: 'assistant',
+              content: 'This is a final generated response for your request.',
+              timestamp: ts,
+              annotations: [
+                {
+                  url: 'https://example.com/article',
+                  title: 'Example Article',
+                  snippet: 'Excerpt from the source',
+                },
+              ],
+            },
+          ];
+        }
+      }
+      return of({ request_id: id, status: updated.status, last_updated: updated.last_updated });
+    }
+    return this.http.get<RequestStatusResponse>(`/requests/${encodeURIComponent(id)}/status`);
+  }
+}
+

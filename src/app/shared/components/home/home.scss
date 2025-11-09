@@ -1,0 +1,39 @@
+@use 'tailwindcss';
+
+$panel-bg: var(--panel, #fff);
+$panel-radius: var(--radius, 0.75rem);
+$panel-padding: 0.75rem;
+$panel-shadow: var(--shadow, 0 1px 3px rgba(0,0,0,0.08));
+
+@mixin panel-style() {
+  background-color: $panel-bg;
+  border-radius: $panel-radius;
+  padding: $panel-padding;
+  box-shadow: $panel-shadow;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.5rem;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+:host {
+  display: block;
+  box-sizing: border-box;
+}
+
+.home {
+  &_panel {
+    @include panel-style();
+  }
+
+  &_scrollable,
+  &_list,
+  :host ::ng-deep .list,
+  :host ::ng-deep .scrollable,
+  :host ::ng-deep [data-scrollable='true'] {
+    overflow: auto;
+    min-height: 0;
+  }
+}

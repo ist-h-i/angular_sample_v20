@@ -1,0 +1,25 @@
+<div class="flex h-full flex-col min-h-0">
+  <!-- Header (top) -->
+  <div class="flex items-center flex-none px-2 py-1">
+    <h3 class="m-0 text-base font-medium">出典</h3>
+  </div>
+
+  <!-- Main panel (fills remaining space) -->
+  <div class="bg-white flex-1 gap-2 overflow-auto min-h-0">
+    <!-- Make the panel take full height of the middle row and allow internal scrolling -->
+    <div
+      id="annotationslist"
+      class="annotations min-w-[320px] flex flex-col gap-2 overflow-auto w-full"
+    >
+      @if (!hasAnnotationsFlag()) {
+        <div class="empty text-slate-500 text-sm mt-5" id="annotationsEmpty">
+          出典はありません。
+        </div>
+      } @else {
+        @for (annotation of annotations(); track annotation.url) {
+          <app-annotation [annotation]="annotation"></app-annotation>
+        }
+      }
+    </div>
+  </div>
+</div>

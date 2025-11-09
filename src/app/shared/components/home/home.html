@@ -1,0 +1,21 @@
+<div
+  class="home grid auto-rows-fr grid-cols-3 gap-3 p-3 box-border items-stretch bg-transparent"
+  role="application"
+  aria-label="NomuSearch"
+  style="height: calc(100vh - var(--topbar-height, 56px) - 2px); grid-template-columns: 450px 1fr 450px;"
+>
+  <!-- Left: Requests -->
+  <aside class="home_panel flex flex-col min-h-0" aria-label="request-queue">
+    <app-request-queue class="h-full min-h-0"></app-request-queue>
+  </aside>
+
+  <!-- Center: Chat -->
+  <main class="home_panel flex flex-col min-h-0" aria-label="chat-panel">
+    <app-chat-panel class="h-full min-h-0"></app-chat-panel>
+  </main>
+
+  <!-- Right: Annotations -->
+  <aside class="home_panel flex flex-col min-h-0" aria-label="annotation-list">
+    <app-annotation-list class="h-full min-h-0"></app-annotation-list>
+  </aside>
+</div>
