@@ -1,0 +1,31 @@
+@use "tailwindcss";
+
+.message {
+  border-radius: 12px;
+  box-shadow: var(--muted-shadow);
+  line-height: 1.4;
+  word-break: break-word;
+  transition: transform 200ms ease-out, opacity 200ms ease-out;
+  box-sizing: border-box;
+  opacity: 1;
+}
+
+.bubble--user {
+  background: linear-gradient(180deg, var(--accent-50), var(--accent-100));
+  border: 1px solid var(--accent-200);
+  color: var(--text);
+  align-self: flex-end;
+}
+
+.bubble--assistant {
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  align-self: flex-start;
+}
+
+.message-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}

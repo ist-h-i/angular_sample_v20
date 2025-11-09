@@ -1,0 +1,27 @@
+@if (messages && messages.length > 0) {
+  <div class="space-y-4">
+    @for (m of messages; track m) {
+      <div class="flex items-start gap-3 message-row">
+        <div class="w-full">
+          <!-- Bubble container -->
+          <div
+            class="flex"
+            [class.justify-start]="m.role !== 'user'"
+            [class.justify-end]="m.role === 'user'"
+          >
+            <article
+              [attr.aria-label]="'メッセージ: ' + m.content"
+              class="message inline-block max-w-[78%] break-words p-3 rounded-[12px] shadow-sm transition-transform duration-200 ease-out transform"
+              [class.bubble--user]="m.role === 'user'"
+              [class.bubble--assistant]="m.role !== 'user'"
+            >
+              <div class="text-sm whitespace-pre-wrap">{{ m.content }}</div>
+            </article>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+} @else {
+  <div class="text-gray-500 text-sm text-center mt-5">まだメッセージがありません</div>
+}

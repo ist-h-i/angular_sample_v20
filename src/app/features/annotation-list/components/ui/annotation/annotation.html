@@ -1,0 +1,48 @@
+<article
+  aria-label="出典"
+  class="bg-white rounded-xl p-4 shadow-md border border-slate-100 hover:-translate-y-1 hover:shadow-lg transition-transform duration-150"
+>
+  <header class="flex items-start justify-between gap-3">
+    <a
+      [href]="annotation?.url"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="text-blue-600 font-semibold text-lg truncate max-w-[70%] hover:underline"
+      [title]="annotation?.title"
+    >
+      {{ annotation?.title }}
+    </a>
+    <div class="text-xs text-slate-500 shrink-0 text-right" aria-hidden="true">
+      {{ (annotation?.url || '').replace('https://', '').replace('http://', '') }}
+    </div>
+  </header>
+
+  <p class="mt-3 text-sm text-slate-800 leading-relaxed bg-gradient-to-b from-slate-50/60 to-transparent p-2 rounded-md border border-slate-50 max-h-32 overflow-auto whitespace-pre-wrap">
+    {{ annotation?.snippet }}
+  </p>
+
+  <footer class="mt-3 flex items-center justify-between">
+    <div class="text-xs text-slate-500" aria-hidden="true">使用箇所の抜粋</div>
+    <div>
+      <button
+        type="button"
+        (click)="toggleAccordion()"
+        [attr.aria-expanded]="show"
+        [attr.aria-controls]="'usedText-' + (idx || 0)"
+        class="inline-flex items-center gap-2 px-3 py-1 rounded-lg font-semibold bg-slate-100 text-slate-900 border border-slate-200 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-400"
+      >
+        {{ show ? '非表示' : '表示' }}
+      </button>
+    </div>
+  </footer>
+
+  @if (show) {
+    <section
+      id="usedText-{{ idx || 0 }}"
+      aria-label="出典の抜粋"
+      class="mt-3 p-3 bg-slate-50 border border-slate-100 rounded-md text-sm text-slate-800 max-h-56 overflow-auto whitespace-pre-wrap"
+    >
+      {{ annotation?.usedText || '（抜粋がありません）' }}
+    </section>
+  }
+</article>

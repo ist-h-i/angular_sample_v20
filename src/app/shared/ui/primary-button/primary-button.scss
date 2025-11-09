@@ -1,0 +1,48 @@
+@use "tailwindcss";
+
+:host {
+  display: inline-block;
+}
+
+/*
+ Tailwind-first: keep only design tokens and interaction shadows
+ Templates should apply layout/spacing/colors via Tailwind utilities.
+*/
+
+/* Apply preserved interaction/size behaviors to the component's button element.
+   Templates should still provide color/spacing via Tailwind utilities. */
+:host > button {
+  /* sizing variable: consumers can override --btn-height */
+  --btn-height: 2.5rem;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--btn-height);
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+
+  /* subtle shadow for elevated feel; Tailwind covers colors/rounding */
+  box-shadow: var(--shadow);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+/* Preserve interaction shadow transitions for hover/active on the button */
+:host > button:hover {
+  transform: translateY(-2px);
+  /* use stronger semantic shadow for hover */
+  box-shadow: var(--shadow-strong);
+}
+
+:host > button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow);
+}
+
+/* small variant kept for cases where consumer prefers modifier instead of utility classes */
+:host > button.small {
+  /* keep minimal sizing fallback; prefer using Tailwind: px-2 py-1 text-sm */
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}

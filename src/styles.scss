@@ -1,1 +1,125 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global theme tokens and base styles */
+
+:root {
+  /* text */
+  --text: #111827; /* primary text */
+  --muted: #6b7280; /* muted text / meta */
+
+  /* primary accent */
+  --accent: #2b6cb0;
+  --accent-50: #eff6ff;
+  --accent-100: #dbeafe;
+  --accent-200: #bfdbfe;
+  --accent-300: #93c5fd;
+  --accent-400: #60a5fa;
+  --accent-500: #3b82f6;
+  --accent-600: #2563eb;
+  --accent-700: #1d4ed8; /* used as hover for primary accent */
+  --accent-800: #1e40af;
+  --accent-900: #1e3a8a;
+  --accent-950: #172554;
+
+  --on-accent: #ffffff; /* text color on accent backgrounds */
+  --btn-secondary-bg: #f1f5f9; /* secondary button background */
+  --btn-secondary-text: #0f172a; /* secondary button text color */
+
+  /* semantic colors */
+  --success: #16a34a;
+  --success-600: #15803d;
+  --danger: #ef4444;
+  --danger-600: #dc2626;
+  --warning: #f59e0b;
+  --warning-600: #b45309;
+  --info: var(--accent);
+
+  /* subtle borders for statuses */
+  --success-border: rgba(22, 163, 74, 0.06);
+  --danger-border: rgba(239, 68, 68, 0.06);
+  --warning-border: rgba(245, 158, 11, 0.08);
+
+  /* surfaces */
+  --border: #e2e8f0;
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --panel-border: #eef2f7;
+
+  /* elevation & focus */
+  --shadow: 0 2px 8px rgba(12, 20, 40, 0.06);
+  --shadow-strong: 0 8px 30px rgba(10, 20, 40, 0.12);
+  --ring-accent: 0 0 0 3px rgba(59, 130, 246, 0.08);
+  --ring-accent-strong: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  --inset-highlight: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  --muted-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+
+  /* radii */
+  --radius: 10px;
+  --radius-sm: 8px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  margin: 0;
+}
+
+/* Panel */
+.app-panel {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--panel-border);
+}
+
+/* Buttons */
+.btn {
+  appearance: none;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 1px solid rgba(43, 108, 176, 0.18);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 20px 6px rgba(43, 108, 176, 0.12);
+  transition: background-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.btn:hover {
+  background: var(--accent-700);
+}
+
+.btn:focus {
+  outline: none;
+  box-shadow: var(--ring-accent);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn.secondary {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  border: 1px solid var(--panel-border);
+  box-shadow: none;
+}
+
+/* Utility */
+.text-muted { color: var(--muted); }
+.shadow       { box-shadow: var(--shadow); }
+.shadow-strong{ box-shadow: var(--shadow-strong); }
+.rounded      { border-radius: var(--radius); }
+.rounded-sm   { border-radius: var(--radius-sm); }

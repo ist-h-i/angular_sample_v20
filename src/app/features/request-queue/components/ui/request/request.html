@@ -1,0 +1,46 @@
+<article aria-label="リクエスト" class="rq-card">
+  <button
+    type="button"
+    class="rq-card-inner bg-white rounded-xl p-4 shadow-md border border-slate-100 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-transform duration-150 w-full text-left"
+    (click)="onClick()"
+    [class.selected]="isSelected()"
+  >
+    <div class="rq-card-grid flex items-center gap-4">
+      <div class="rq-card-content flex-1 min-w-0">
+        <header class="rq-card-header mb-2">
+          <h4
+            class="rq-title m-0 text-base font-semibold text-slate-900 truncate"
+            [title]="request?.title"
+          >
+            {{ request?.title }}
+          </h4>
+
+          @if (request?.last_updated) {
+            <p class="rq-meta text-sm text-slate-500 mt-1">
+              <time class="rq-updated text-xs" [attr.datetime]="request?.last_updated">
+                {{ request?.last_updated }}
+              </time>
+            </p>
+          }
+        </header>
+
+        <div class="rq-card-body">
+          <p class="rq-snippet text-slate-700 text-sm leading-6 overflow-hidden">
+            {{ request?.snippet || '-' }}
+          </p>
+        </div>
+
+        <footer class="rq-card-footer" aria-hidden="true">
+          <!-- Intentional: actions are handled at page level to keep this component presentation-only -->
+        </footer>
+      </div>
+
+      <aside class="rq-card-side flex items-center justify-end" aria-hidden="false">
+        <div [class]="statusPillClass">
+          <span class="sr-only">Status:</span>
+          <span class="rq-status-text">{{ request?.status }}</span>
+        </div>
+      </aside>
+    </div>
+  </button>
+</article>

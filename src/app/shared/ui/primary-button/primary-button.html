@@ -1,0 +1,12 @@
+<button
+  class="btn inline-flex items-center justify-center rounded-lg focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:translate-y-0 transform transition-all duration-150 px-4 py-2"
+  type="button"
+  [disabled]="disabled"
+  [class.btn--disabled]="disabled"
+  [attr.aria-disabled]="disabled"
+  (click)="handleClick($event)"
+>
+  @if (label) {
+    {{ label }}
+  }
+</button>

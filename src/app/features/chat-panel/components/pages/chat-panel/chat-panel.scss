@@ -1,0 +1,26 @@
+@use "tailwindcss";
+
+:host {
+  display: block;
+}
+
+.chat-panel__textarea {
+  resize: none;
+  min-height: 40px;
+  max-height: 500px;
+  box-sizing: border-box;
+  overflow-y: hidden;
+
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+
+  &::placeholder { color: var(--muted); }
+  &:focus { outline: none; }
+  &:focus-visible {
+    outline: 2px solid var(--accent-500);
+    outline-offset: 2px;
+    box-shadow: var(--ring-accent-strong);
+  }
+}

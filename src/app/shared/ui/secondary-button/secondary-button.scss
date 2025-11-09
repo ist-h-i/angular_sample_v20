@@ -1,0 +1,40 @@
+@use "tailwindcss";
+
+:host {
+  display: inline-block;
+}
+
+/*
+ Secondary button shares interaction behaviors with primary.
+ Tailwind utilities provide colors/spacing.
+*/
+
+:host > button {
+  --btn-height: 2.5rem;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--btn-height);
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+
+  box-shadow: var(--shadow);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+:host > button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-strong);
+}
+
+:host > button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow);
+}
+
+:host > button.small {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
