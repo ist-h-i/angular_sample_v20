@@ -127,30 +127,62 @@ export class ApiService {
   // POST /requests
   createRequest(payload: CreateRequestPayload): Observable<CreateRequestResponse> {
     if (this.useMock) {
-      const id = `req-${Date.now()}`;
       const now = new Date().toISOString();
+      const queryText = payload.query_text ?? '';
       const title = payload.query_text?.slice(0, 48) || 'New Request';
-      // add to summaries
-      this.mockRequests[id] = {
-        request_id: id,
-        title,
-        snippet: payload.query_text || '',
-        status: 'pending',
-        last_updated: now,
-      };
-      // add to details
-      this.mockDetails[id] = {
-        request_id: id,
-        title,
-        query_text: payload.query_text || '',
-        status: 'pending',
-        last_updated: now,
-      };
+      const historyId =
+        typeof payload.request_history_id === 'string' &&
+        !!this.mockRequests[payload.request_history_id]
+          ? payload.request_history_id
+          : null;
+      const requestId = historyId ?? `req-${Date.now()}`;
+
+      if (historyId) {
+        const existing = this.mockRequests[historyId];
+        this.mockRequests[historyId] = {
+          request_id: historyId,
+          title: existing?.title ?? title,
+          snippet: queryText,
+          status: 'pending',
+          last_updated: now,
+        };
+        const detail = this.mockDetails[historyId];
+        const updatedMessages = [...(detail?.messages ?? [])];
+        updatedMessages.push({
+          role: 'user',
+          content: queryText,
+          timestamp: now,
+        });
+        this.mockDetails[historyId] = {
+          ...(detail ?? {}),
+          request_id: historyId,
+          title: detail?.title ?? existing?.title ?? title,
+          query_text: detail?.query_text ?? queryText,
+          status: 'pending',
+          last_updated: now,
+          messages: updatedMessages,
+        };
+      } else {
+        this.mockRequests[requestId] = {
+          request_id: requestId,
+          title,
+          snippet: queryText,
+          status: 'pending',
+          last_updated: now,
+        };
+        this.mockDetails[requestId] = {
+          request_id: requestId,
+          title,
+          query_text: queryText,
+          status: 'pending',
+          last_updated: now,
+        };
+      }
       return of({
-        request_id: id,
+        request_id: requestId,
         submitted_at: now,
-        status_url: `/requests/${id}/status`,
-        result_url: `/requests/${id}/result`,
+        status_url: `/requests/${requestId}/status`,
+        result_url: `/requests/${requestId}/result`,
       });
     }
     return this.http.post<CreateRequestResponse>('/requests', payload);

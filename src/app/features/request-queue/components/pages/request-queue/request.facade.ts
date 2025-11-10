@@ -105,8 +105,13 @@ export class RequestFacade {
       request_history_id: requestHistoryId,
     };
     const response = await firstValueFrom(this.api.createRequest(payload));
-    this.addPendingRequestSummary(response, queryText);
-    this.startAutoMonitor(response.request_id);
+    if (requestHistoryId) {
+      this.markExistingRequestAsPending(requestHistoryId, queryText, response.submitted_at);
+      this.startChatMonitor(requestHistoryId);
+    } else {
+      this.addPendingRequestSummary(response, queryText);
+      this.startAutoMonitor(response.request_id);
+    }
     return response;
   }
 
@@ -289,6 +294,26 @@ export class RequestFacade {
       snippet: queryText,
       status: 'pending',
       last_updated: response.submitted_at ?? new Date().toISOString(),
+    };
+    this._requests.set(next);
+  }
+
+  private markExistingRequestAsPending(
+    requestId: string,
+    queryText: string,
+    submittedAt?: string,
+  ): void {
+    if (!requestId) return;
+    const next: Record<string, RequestSummary> = { ...(this._requests() || {}) };
+    const existing = next[requestId];
+    const lastUpdated = submittedAt ?? new Date().toISOString();
+    const snippet = queryText?.trim() ? queryText : existing?.snippet ?? '';
+    next[requestId] = {
+      request_id: requestId,
+      title: existing?.title ?? this.buildTitleFromQuery(queryText),
+      snippet,
+      status: 'pending',
+      last_updated: lastUpdated,
     };
     this._requests.set(next);
   }
