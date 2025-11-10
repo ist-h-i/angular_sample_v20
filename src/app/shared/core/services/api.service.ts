@@ -9,7 +9,7 @@ import type { User } from '../models/user.model';
 
 export interface CreateRequestPayload {
   query_text: string;
-  request_history_id?: string;
+  request_history_id?: string | null;
 }
 
 export interface CreateRequestResponse {
@@ -37,16 +37,16 @@ export class ApiService {
   private mockRequests: Record<string, RequestSummary> = {
     'req-1001': {
       request_id: 'req-1001',
-      title: 'Research: Angular v20 signals best practices',
-      snippet: 'Investigate usage patterns and migration notes... ',
-      status: 'processing',
+      title: '調査：Angular v20 Signals のベストプラクティス',
+      snippet: 'Signals 導入時に押さえるべきネイティブ API の使いかたや移行パターン...',
+      status: 'completed',
       last_updated: new Date().toISOString(),
     },
     'req-1002': {
       request_id: 'req-1002',
-      title: 'Summarize latest DX docs',
-      snippet: 'Collect highlights from recent articles...',
-      status: 'pending',
+      title: '最近の DX ドキュメントまとめ',
+      snippet: '最新の開発者体験改善施策を中心に要点を整理...',
+      status: 'processing',
       last_updated: new Date().toISOString(),
     },
   };
@@ -54,17 +54,44 @@ export class ApiService {
   private mockDetails: Record<string, RequestDetail> = {
     'req-1001': {
       request_id: 'req-1001',
-      title: 'Research: Angular v20 signals best practices',
-      query_text: 'Summarize Angular v20 signals best practices',
-      status: 'processing',
+      title: '調査：Angular v20 Signals のベストプラクティス',
+      query_text: 'Angular v20 Signals の導入時に押さえるべきポイントや移行戦略を整理してください。',
+      status: 'completed',
       last_updated: new Date().toISOString(),
-      // messages will appear when completed
+      messages: [
+        {
+          role: 'user',
+          content:
+            'Angular v20 Signals の導入を検討しているのですが、既存のコンポーネントやサービスをどうやって移行すればよいか、加えて運用時に気をつけることを知りたいです。',
+          timestamp: new Date().toISOString(),
+        },
+        {
+          role: 'assistant',
+          content:
+            '以下のようなステップで Signals を活用すると、初期導入と既存コードの移行がスムーズになります。\n' +
+            '1. 基盤となるステートを `signal` で定義し、`effect` や `computed` を使って派生値を管理します。これにより変更追跡の粒度が明示化され、変更通知の過剰な再計算を抑えられます。\n' +
+            '2. 既存の `@Input`/`@Output` を使うコンポーネントは、`signal` を引数で渡して直接参照するか、`computed` で内部状態を再構築します。副作用の発生源を明確にするため、`effect` をサービスやコンポーネントの `onDestroy` で停止します。\n' +
+            '3. サービス側は `signal` を持ち、ストアとして作用させることで、購読不要な状態共有を実現できます。これにより zone.js の監視外でも状態更新が動作します。\n' +
+            '4. 運用ではテストカバレッジを強化し、`signal` の mutate／reset をユースケースごとに確認してください。`toSignal` など既存 Observable との橋渡しでは、互換性を保つために明示的にライフサイクルを管理するのがおすすめです。\n' +
+            '5. ドキュメントの改善：チームが一貫した `signal` 命名やアクセサリの方針を共有すれば、Signals 周りのコードレビューが容易になります。\n' +
+            '参照資料: https://angular.dev/guide/signals',
+          timestamp: new Date().toISOString(),
+          annotations: [
+            {
+              url: 'https://angular.dev/guide/signals',
+              title: 'Angular Signals ガイド',
+              snippet:
+                'Signals では状態と副作用を明示的に分離することで、より細かいレンダリング制御と簡潔な依存関係管理が可能になります。',
+            },
+          ],
+        },
+      ],
     },
     'req-1002': {
       request_id: 'req-1002',
-      title: 'Summarize latest DX docs',
-      query_text: 'Summarize latest developer experience docs',
-      status: 'pending',
+      title: '最近の DX ドキュメントまとめ',
+      query_text: '最新の開発者体験を改善する取り組みを特に注目点と併せてまとめてください。',
+      status: 'processing',
       last_updated: new Date().toISOString(),
     },
   };

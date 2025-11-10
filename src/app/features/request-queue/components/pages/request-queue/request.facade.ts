@@ -2,18 +2,24 @@ import { Injectable, computed, signal, effect, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { RequestSummary } from '../../../../../shared/core/models/request-summary.model';
 import type { RequestStatus } from '../../../../../shared/core/models/request-status.model';
-import type { RequestStatusResponse } from '../../../../../shared/core/services/api.service';
+import type {
+  RequestStatusResponse,
+  CreateRequestResponse,
+} from '../../../../../shared/core/services/api.service';
 import { ApiService } from '../../../../../shared/core/services/api.service';
 import { InitialDataStore } from '../../../../../shared/core/stores/initial-data.store';
+import { SelectedRequestStore } from '../../../../../shared/core/stores/selected-request.store';
 import { REQUEST_POLLING_CONFIG } from './request-polling.config';
 
 type TimerId = ReturnType<typeof setTimeout>;
+type MonitorMode = 'background' | 'chat';
 
 interface MonitorEntry {
   unsubscribe: () => void;
   pollingId: TimerId | null;
   lastInterval: number;
   consecutiveErrors: number;
+  mode: MonitorMode;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -24,6 +30,7 @@ export class RequestFacade {
   readonly requests = computed(() => this._requests());
 
   private readonly initialDataStore = inject(InitialDataStore);
+  private readonly selectedStore = inject(SelectedRequestStore);
   private readonly setTimer = (callback: () => void, delay: number): TimerId => {
     const timerFn = typeof window !== 'undefined' ? window.setTimeout : setTimeout;
     return timerFn(callback, delay);
@@ -54,6 +61,24 @@ export class RequestFacade {
       }
       if (changed) this._requests.set(cur);
     });
+
+    let previousDisplayedId: string | null = null;
+    effect(() => {
+      const currentDisplayedId = this.selectedStore.selectedId();
+
+      if (previousDisplayedId && previousDisplayedId !== currentDisplayedId) {
+        this.stopAutoMonitor(previousDisplayedId);
+        this.startAutoMonitor(previousDisplayedId);
+        this.resetMonitorForRequest(previousDisplayedId);
+      }
+
+      if (currentDisplayedId && currentDisplayedId !== previousDisplayedId) {
+        this.stopAutoMonitor(currentDisplayedId);
+        this.startChatMonitor(currentDisplayedId);
+      }
+
+      previousDisplayedId = currentDisplayedId;
+    });
   }
 
   async refreshStatuses(): Promise<void> {
@@ -74,16 +99,44 @@ export class RequestFacade {
     this._requests.set(next);
   }
 
+  async submitRequest(queryText: string, requestHistoryId: string | null): Promise<CreateRequestResponse> {
+    const payload = {
+      query_text: queryText,
+      request_history_id: requestHistoryId,
+    };
+    const response = await firstValueFrom(this.api.createRequest(payload));
+    this.addPendingRequestSummary(response, queryText);
+    this.startAutoMonitor(response.request_id);
+    return response;
+  }
+
   startAutoMonitor(id: string): void {
-    if (!id || this._monitors.has(id)) return;
-    const request = this._requests()[id];
-    if (!request || !this.isPendingStatus(request.status)) return;
+    if (!id || this._monitors.has(id) || !this.shouldMonitorRequest(id)) return;
 
     const entry: MonitorEntry = {
       unsubscribe: () => this.stopAutoMonitor(id),
       pollingId: null,
       lastInterval: this.getBaseInterval(),
       consecutiveErrors: 0,
+      mode: 'background',
+    };
+
+    this._monitors.set(id, entry);
+    void this.runPoll(id);
+  }
+
+  private startChatMonitor(id: string): void {
+    if (!id || !this.shouldMonitorRequest(id, true)) return;
+    const existing = this._monitors.get(id);
+    if (existing?.mode === 'chat') return;
+    this.stopAutoMonitor(id);
+
+    const entry: MonitorEntry = {
+      unsubscribe: () => this.stopAutoMonitor(id),
+      pollingId: null,
+      lastInterval: this.getBaseInterval(),
+      consecutiveErrors: 0,
+      mode: 'chat',
     };
 
     this._monitors.set(id, entry);
@@ -145,6 +198,9 @@ export class RequestFacade {
       last_updated: lastUpdated,
     };
     this._requests.set(current);
+    if (entry.mode === 'chat' && this.isDisplayedInChatPanel(id) && this.isCompletedStatus(status)) {
+      this.selectedStore.startResultStream(id);
+    }
 
     if (!this.isPendingStatus(status)) {
       entry.unsubscribe();
@@ -154,7 +210,8 @@ export class RequestFacade {
   }
 
   private scheduleNext(id: string, entry: MonitorEntry): void {
-    const nextInterval = this.computeNextInterval(entry.lastInterval);
+    const nextInterval =
+      entry.mode === 'chat' ? this.getBaseInterval() : this.computeNextInterval(entry.lastInterval);
     entry.lastInterval = nextInterval;
     entry.pollingId = this.setTimer(() => {
       void this.runPoll(id);
@@ -162,6 +219,10 @@ export class RequestFacade {
   }
 
   private shouldContinuePolling(id: string, entry: MonitorEntry): boolean {
+    if (entry.mode === 'background' && this.isDisplayedInChatPanel(id)) {
+      entry.unsubscribe();
+      return false;
+    }
     const snapshot = this._requests()[id];
     if (!snapshot) {
       entry.unsubscribe();
@@ -174,8 +235,25 @@ export class RequestFacade {
     return true;
   }
 
+  private shouldMonitorRequest(id: string, allowDisplayed = false): boolean {
+    if (!id) return false;
+    if (!allowDisplayed && this.isDisplayedInChatPanel(id)) return false;
+    const request = this._requests()[id];
+    if (!request) return false;
+    return this.isPendingStatus(request.status);
+  }
+
+  private isDisplayedInChatPanel(id: string): boolean {
+    const displayedId = this.selectedStore.selectedId();
+    return Boolean(displayedId && displayedId === id);
+  }
+
   private isPendingStatus(status: RequestStatus | string | undefined | null): boolean {
     return typeof status === 'string' && status.toLowerCase() === 'pending';
+  }
+
+  private isCompletedStatus(status: RequestStatus | string | undefined | null): boolean {
+    return typeof status === 'string' && status.toLowerCase() === 'completed';
   }
 
   private computeNextInterval(current: number): number {
@@ -200,5 +278,26 @@ export class RequestFacade {
 
   private getMaxErrors(): number {
     return Math.max(1, REQUEST_POLLING_CONFIG.pollingMaxConsecutiveErrorsBeforeStop ?? 5);
+  }
+
+  private addPendingRequestSummary(response: CreateRequestResponse, queryText: string): void {
+    if (!response?.request_id) return;
+    const next: Record<string, RequestSummary> = { ...(this._requests() || {}) };
+    next[response.request_id] = {
+      request_id: response.request_id,
+      title: this.buildTitleFromQuery(queryText),
+      snippet: queryText,
+      status: 'pending',
+      last_updated: response.submitted_at ?? new Date().toISOString(),
+    };
+    this._requests.set(next);
+  }
+
+  private buildTitleFromQuery(queryText: string): string {
+    const trimmed = (queryText ?? '').trim();
+    if (!trimmed) {
+      return 'New Request';
+    }
+    return trimmed.length <= 48 ? trimmed : trimmed.slice(0, 48);
   }
 }
