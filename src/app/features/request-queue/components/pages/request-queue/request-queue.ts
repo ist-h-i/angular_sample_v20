@@ -72,10 +72,8 @@ export class RequestQueue implements OnInit {
   }
 
   async onSelectRequest(id: string): Promise<void> {
-    // Load detail for panel/annotations and start monitoring status updates on the summary
+    // Load detail for panel/annotations; polling pauses while the request is displayed
     await this.selectedStore.select(id);
-    this.facade.startAutoMonitor(id);
-    this.facade.resetMonitorForRequest(id);
   }
 
   private restartPollingForCurrentRequests(): void {
@@ -84,7 +82,9 @@ export class RequestQueue implements OnInit {
       typeof raw === 'function'
         ? (raw as () => Record<string, unknown>)()
         : (raw as Record<string, unknown>);
+    const displayedId = this.selectedStore.selectedId();
     for (const id of Object.keys(records || {})) {
+      if (id === displayedId) continue;
       this.facade.startAutoMonitor(id);
       this.facade.resetMonitorForRequest(id);
     }

@@ -3,6 +3,7 @@ import { PrimaryButton } from '../../../../../shared/ui/primary-button/primary-b
 import { Chat } from '../../ui/chat/chat';
 import type { Message } from '../../../../../shared/core/models/message.model';
 import { SelectedRequestStore } from '../../../../../shared/core/stores/selected-request.store';
+import { RequestFacade } from '../../../../request-queue/components/pages/request-queue/request.facade';
 
 @Component({
   selector: 'app-chat-panel',
@@ -13,6 +14,7 @@ import { SelectedRequestStore } from '../../../../../shared/core/stores/selected
 })
 export class ChatPanel implements AfterViewInit {
   private readonly selectedStore = inject(SelectedRequestStore);
+  private readonly requestFacade = inject(RequestFacade);
   constructor(private readonly ngZone: NgZone) {
     // Sync messages when selected request detail changes
     effect(() => {
@@ -84,6 +86,11 @@ export class ChatPanel implements AfterViewInit {
       timestamp: new Date().toISOString(),
     };
     this.messages = [...this.messages, newMsg];
+
+    const historyId = this.selectedStore.selectedId() ?? null;
+    void this.requestFacade.submitRequest(message, historyId).catch((error) => {
+      console.error('Failed to send message request', error);
+    });
   }
 
   private resizeTextarea(): void {
