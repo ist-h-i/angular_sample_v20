@@ -7,7 +7,7 @@ export interface RequestDetail {
   query_text: string;
   status: RequestStatus;
   last_updated: string; // ISO 8601 (UTC, with Z)
+  ai_model?: string | null;
   messages?: Message[];
   status_detail?: string;
 }
-

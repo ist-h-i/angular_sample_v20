@@ -130,6 +130,7 @@ export class ApiService {
       const now = new Date().toISOString();
       const queryText = payload.query_text ?? '';
       const title = payload.query_text?.slice(0, 48) || 'New Request';
+      const aiModel = payload.ai_model ?? null;
       const historyId =
         typeof payload.request_history_id === 'string' &&
         !!this.mockRequests[payload.request_history_id]
@@ -161,6 +162,7 @@ export class ApiService {
           status: 'pending',
           last_updated: now,
           messages: updatedMessages,
+          ai_model: aiModel ?? detail?.ai_model ?? null,
         };
       } else {
         this.mockRequests[requestId] = {
@@ -176,6 +178,7 @@ export class ApiService {
           query_text: queryText,
           status: 'pending',
           last_updated: now,
+          ai_model: aiModel,
         };
       }
       return of({

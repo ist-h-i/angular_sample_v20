@@ -1,0 +1,33 @@
+.ai-model-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.ai-model-selector__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ai-model-selector__select {
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text);
+  padding: 0.25rem 0.8rem;
+  line-height: 1.3;
+  min-width: 180px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ai-model-selector__select:focus-visible {
+  border-color: var(--accent-500);
+  outline: none;
+  box-shadow: var(--ring-accent-strong);
+}

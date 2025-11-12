@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import type { RequestSummary } from '../../../../../shared/core/models/request-summary.model';
 import type { RequestStatus } from '../../../../../shared/core/models/request-status.model';
 import type {
+  CreateRequestPayload,
   RequestStatusResponse,
   CreateRequestResponse,
 } from '../../../../../shared/core/services/api.service';
@@ -99,11 +100,14 @@ export class RequestFacade {
     this._requests.set(next);
   }
 
-  async submitRequest(queryText: string, requestHistoryId: string | null): Promise<CreateRequestResponse> {
-    const payload = {
+  async submitRequest(queryText: string, requestHistoryId: string | null, aiModelId?: string | null): Promise<CreateRequestResponse> {
+    const payload: CreateRequestPayload = {
       query_text: queryText,
       request_history_id: requestHistoryId,
     };
+    if (aiModelId) {
+      payload.ai_model = aiModelId;
+    }
     const response = await firstValueFrom(this.api.createRequest(payload));
     if (requestHistoryId) {
       this.markExistingRequestAsPending(requestHistoryId, queryText, response.submitted_at);

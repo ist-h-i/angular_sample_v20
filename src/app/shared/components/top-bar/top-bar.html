@@ -3,32 +3,12 @@
   class="bg-gradient-to-r from-slate-50 to-white border-b border-slate-200 px-4 py-1"
   role="banner"
 >
-  <div class="mx-auto flex items-center justify-between gap-4">
-    <div class="flex items-center gap-3">
-      @if (logoSrc) {
-        <img
-          [src]="logoSrc"
-          [alt]="title || 'Logo'"
-          class="h-10 object-contain"
-          style="max-width: 100%; height: auto;"
-          aria-hidden="true"
-          (load)="onMediaLoaded()"
-        />
-      }
-      <div class="flex flex-col leading-tight">
-        <div class="font-semibold text-lg text-slate-900">
-          @if (title) { {{ title }} } @else { <ng-content select="[top-bar-title]"></ng-content> }
-        </div>
-        @if (subtitle) {
-          <div class="text-base text-slate-500">{{ subtitle }}</div>
-        } @else {
-          <ng-content select="[top-bar-subtitle]"></ng-content>
-        }
+  <div class="mx-auto flex items-center gap-4">
+    <div class="flex flex-col leading-tight">
+      <div class="font-semibold text-lg text-slate-900">
+        {{ title }}
       </div>
     </div>
-
-    <div class="flex items-center gap-2">
-      <ng-content></ng-content>
-    </div>
+    <app-ai-model-selector></app-ai-model-selector>
   </div>
 </header>
