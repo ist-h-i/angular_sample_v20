@@ -3,4 +3,8 @@
   <main class="flex-1 min-h-0">
     <router-outlet />
   </main>
+  <app-ai-warning-dialog
+    [open]="showAiWarning()"
+    (closed)="handleAiWarningClosed()"
+  ></app-ai-warning-dialog>
 </div>

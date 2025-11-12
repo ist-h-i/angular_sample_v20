@@ -1,0 +1,49 @@
+@if (open) {
+  <div class="fixed inset-0 z-[1100] flex items-center justify-center px-4 py-6">
+    <div
+      class="absolute inset-0 bg-slate-900/60 transition-opacity"
+      aria-hidden="true"
+      (click)="onBackdropClick()"
+    ></div>
+    <section
+      role="dialog"
+      aria-modal="true"
+      class="relative w-full max-w-2xl rounded-3xl bg-white p-6 shadow-[0_25px_50px_rgba(15,23,42,0.35)] ring-1 ring-slate-200"
+      aria-labelledby="aiWarningTitle"
+      aria-describedby="aiWarningBody"
+    >
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-teal-600">注意</p>
+          <h2 id="aiWarningTitle" class="mt-2 text-2xl font-semibold text-slate-900">AIに関する注意事項</h2>
+        </div>
+        <button
+          type="button"
+          class="text-slate-500 transition hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+          aria-label="AI注意文言を閉じる"
+          (click)="close()"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+
+      <p id="aiWarningBody" class="mt-4 text-sm leading-relaxed text-slate-700">
+        この会話におけるAIの応答は過去の学習データに基づく参考情報です。完全な正確さを担保できませんので、業務で活用される際は必ずご自身や担当部門で内容を検討してください。
+      </p>
+
+      <ul class="mt-4 list-disc space-y-2 pl-4 text-sm text-slate-600">
+        <li>個人情報・機密情報・パスワード等の入力は避けてください。</li>
+        <li>最新の法令・仕様などは公式文書や担当者に確認してください。</li>
+        <li>生成された内容は必要に応じて人間がレビューし、コピーや公開は慎重に行ってください。</li>
+      </ul>
+
+      <button
+        type="button"
+        class="mt-6 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 active:translate-y-px"
+        (click)="close()"
+      >
+        理解しました
+      </button>
+    </section>
+  </div>
+}
