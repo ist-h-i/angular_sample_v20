@@ -10,6 +10,7 @@ import type { User } from '../models/user.model';
 export interface CreateRequestPayload {
   query_text: string;
   request_history_id?: string | null;
+  ai_model?: string | null;
 }
 
 export interface CreateRequestResponse {
