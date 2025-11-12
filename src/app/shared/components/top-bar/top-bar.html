@@ -28,6 +28,15 @@
     </div>
 
     <div class="flex items-center gap-2">
+      <button
+        type="button"
+        class="h-8 w-8 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+        aria-label="AI注意文言を表示"
+        title="AI通知"
+        (click)="requestAiInfo()"
+      >
+        ?
+      </button>
       <ng-content></ng-content>
     </div>
   </div>

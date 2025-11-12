@@ -1,5 +1,5 @@
 <div class="min-h-screen flex flex-col">
-  <app-top-bar [title]="'Sample App'"></app-top-bar>
+  <app-top-bar [title]="'Sample App'" (aiInfoClicked)="handleAiWarningIconClicked()"></app-top-bar>
   <main class="flex-1 min-h-0">
     <router-outlet />
   </main>

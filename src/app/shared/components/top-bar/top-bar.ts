@@ -1,4 +1,4 @@
-import { Component, Input, ViewChild, ElementRef, AfterViewInit, HostListener } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, Output, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 
 @Component({
   selector: 'app-top-bar',
@@ -15,6 +15,8 @@ export class TopBar implements AfterViewInit {
 
   @Input() subtitle?: string;
   @Input() logoSrc?: string;
+
+  @Output() aiInfoClicked = new EventEmitter<void>();
 
   @ViewChild('topbar', { static: true })
   private topbarEl?: ElementRef<HTMLElement>;
@@ -49,5 +51,9 @@ export class TopBar implements AfterViewInit {
   onMediaLoaded(): void {
     // Recalculate after logo/fonts load which can change height
     this.updateTopbarHeightVar();
+  }
+
+  requestAiInfo(): void {
+    this.aiInfoClicked.emit();
   }
 }

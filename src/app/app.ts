@@ -25,4 +25,8 @@ export class App implements OnInit {
   protected handleAiWarningClosed(): void {
     this.showAiWarning.set(false);
   }
+
+  protected handleAiWarningIconClicked(): void {
+    this.showAiWarning.set(true);
+  }
 }
