@@ -1,0 +1,16 @@
+<section class="error-page">
+  <div class="error-page__card">
+    <p class="error-page__eyebrow">API エラー</p>
+    <h1 class="error-page__status">{{ statusCode || 'Error' }}</h1>
+    <h2 class="error-page__title">{{ metadata.heading }}</h2>
+    <p class="error-page__description">
+      {{ metadata.description }}
+    </p>
+    <p class="error-page__detail" *ngIf="detailMessage">
+      {{ detailMessage }}
+    </p>
+    <div class="error-page__actions">
+      <button type="button" class="primary" (click)="goHome()">ホームに戻る</button>
+    </div>
+  </div>
+</section>

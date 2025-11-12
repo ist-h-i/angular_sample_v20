@@ -1,0 +1,75 @@
+:host {
+  display: block;
+  min-height: 100%;
+}
+
+.error-page {
+  min-height: 100%;
+  padding: 4rem 1rem;
+  background: var(--surface-background, #f8fafc);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.error-page__card {
+  width: min(640px, 100%);
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 2.5rem;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.15);
+  text-align: center;
+}
+
+.error-page__eyebrow {
+  letter-spacing: 0.3em;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.error-page__status {
+  font-size: 4rem;
+  margin: 0;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.error-page__title {
+  margin: 0.25rem 0;
+  font-size: 1.75rem;
+  color: #111827;
+}
+
+.error-page__description {
+  color: #4b5563;
+  margin-bottom: 1rem;
+}
+
+.error-page__detail {
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.error-page__actions {
+  display: flex;
+  justify-content: center;
+}
+
+.primary {
+  border: none;
+  background: #1f2937;
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.primary:hover,
+.primary:focus-visible {
+  background: #111827;
+}

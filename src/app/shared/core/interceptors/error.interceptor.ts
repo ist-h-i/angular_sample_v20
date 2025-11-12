@@ -1,8 +1,11 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import type { ErrorResponse } from '../models/error-response.model';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  const router = inject(Router);
   return next(req).pipe(
     catchError((err: unknown) => {
       if (err instanceof HttpErrorResponse) {
@@ -27,6 +30,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           statusText: err.statusText,
           url: err.url || req.url
         });
+        if ([401, 404, 500].includes(status)) {
+          void router.navigate(['/error', status], {
+            state: {
+              message: normalized.error.message
+            }
+          });
+        }
         return throwError(() => wrapped);
       }
       return throwError(() => err);
