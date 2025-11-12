@@ -4,6 +4,7 @@ import { Chat } from '../../ui/chat/chat';
 import type { Message } from '../../../../../shared/core/models/message.model';
 import { SelectedRequestStore } from '../../../../../shared/core/stores/selected-request.store';
 import { RequestFacade } from '../../../../request-queue/components/pages/request-queue/request.facade';
+import { AiModelSelectionStore } from '../../../../../shared/core/stores/ai-model-selection.store';
 
 @Component({
   selector: 'app-chat-panel',
@@ -13,13 +14,21 @@ import { RequestFacade } from '../../../../request-queue/components/pages/reques
   styleUrl: './chat-panel.scss',
 })
 export class ChatPanel implements AfterViewInit {
-  private readonly selectedStore = inject(SelectedRequestStore);
+  public readonly selectedStore = inject(SelectedRequestStore);
   private readonly requestFacade = inject(RequestFacade);
+  private readonly aiModelSelectionStore = inject(AiModelSelectionStore);
+  public manualThinkingPanelOpen = false;
   constructor(private readonly ngZone: NgZone) {
     // Sync messages when selected request detail changes
     effect(() => {
       const detail = this.selectedStore.detail();
       this.messages = detail?.messages ?? [];
+    });
+    effect(() => {
+      const thinking = this.selectedStore.thinkingProcess();
+      if (!thinking || thinking.isStreaming) {
+        this.manualThinkingPanelOpen = false;
+      }
     });
   }
 
@@ -65,6 +74,40 @@ export class ChatPanel implements AfterViewInit {
     this.trySend();
   }
 
+  public toggleThinkingPanel(): void {
+    this.manualThinkingPanelOpen = !this.manualThinkingPanelOpen;
+  }
+
+  public shouldShowThinkingPanel(): boolean {
+    const thinking = this.selectedStore.thinkingProcess();
+    return Boolean(thinking?.raw && (thinking.isStreaming || this.manualThinkingPanelOpen));
+  }
+
+  public isStreamingThinking(): boolean {
+    return Boolean(this.selectedStore.thinkingProcess()?.isStreaming);
+  }
+
+  public shouldLimitThinkingPanelHeight(): boolean {
+    const thinking = this.selectedStore.thinkingProcess();
+    return Boolean(thinking?.isStreaming && !this.manualThinkingPanelOpen);
+  }
+
+  public thinkingToggleIcon(): string {
+    return this.manualThinkingPanelOpen ? '▲' : '▼';
+  }
+
+  public thinkingPhases(): Array<{ title: string; steps: string[] }> {
+    return this.selectedStore.thinkingProcess()?.phases ?? [];
+  }
+
+  public hasThinkingPhases(): boolean {
+    return this.thinkingPhases().length > 0;
+  }
+
+  public thinkingRaw(): string {
+    return this.selectedStore.thinkingProcess()?.raw ?? '';
+  }
+
   private trySend(): void {
     const text = (this.userInputRef?.nativeElement?.value || '').trim();
     if (!text) return;
@@ -88,7 +131,8 @@ export class ChatPanel implements AfterViewInit {
     this.messages = [...this.messages, newMsg];
 
     const historyId = this.selectedStore.selectedId() ?? null;
-    void this.requestFacade.submitRequest(message, historyId).catch((error) => {
+    const aiModelId = this.aiModelSelectionStore.selectedModelId();
+    void this.requestFacade.submitRequest(message, historyId, aiModelId).catch((error) => {
       console.error('Failed to send message request', error);
     });
   }

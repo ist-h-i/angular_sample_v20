@@ -96,6 +96,45 @@ export class ApiService {
     },
   };
 
+  private readonly mockThinkingStreams: Record<string, string[]> = {
+    'req-1001': [
+      `Phase 1: Deconstruct the Request
+・Process 1: Identify key terms such as "neural network" and "learns."
+・Process 2: Determine the user's likely knowledge level.
+
+`,
+      `Phase 2: Structure the Explanation
+・Process 3: Outline key concepts like neurons, weights, and backpropagation.
+・Process 4: Formulate a simple analogy (e.g., learning to ride a bike).
+
+`,
+    ],
+    'req-1002': [
+      `Phase 1: Deconstruct the Request
+・Process 1: Review the DX document topics mentioned.
+・Process 2: Note the expected deliverable format.
+
+`,
+      `Phase 2: Structure the Explanation
+・Process 3: Surface the key takeaways and decisions.
+・Process 4: Link to supporting references for clarity.
+
+`,
+    ],
+    default: [
+      `Phase 1: Deconstruct the Request
+・Process 1: Capture the main goals.
+・Process 2: Note any constraints mentioned.
+
+`,
+      `Phase 2: Structure the Explanation
+・Process 3: Provide reasoning steps.
+・Process 4: Offer a concise summary.
+
+`,
+    ],
+  };
+
   private mockUser: User = {
     id: '1012835',
     name_initial: 'TY',
@@ -108,6 +147,14 @@ export class ApiService {
     if (s === 'pending') return Math.random() > 0.6 ? 'processing' : 'pending';
     if (s === 'processing') return Math.random() > 0.7 ? 'completed' : 'processing';
     return s;
+  }
+
+  private buildMockThinkingChunks(id: string): string[] {
+    const candidate = this.mockThinkingStreams[id];
+    if (candidate && candidate.length > 0) {
+      return candidate;
+    }
+    return this.mockThinkingStreams['default'];
   }
 
   // GET /initial-data
@@ -186,6 +233,17 @@ export class ApiService {
       });
     }
     return this.http.post<CreateRequestResponse>('/requests', payload);
+  }
+
+  createResultStream(id: string): EventSource | null {
+    if (this.useMock) {
+      const chunks = this.buildMockThinkingChunks(id);
+      return new MockResultEventSource(id, chunks) as unknown as EventSource;
+    }
+    if (typeof EventSource === 'undefined') {
+      return null;
+    }
+    return new EventSource(`/requests/${encodeURIComponent(id)}/result`);
   }
 
   // GET /requests/status — list of lightweight summaries for the current user
@@ -292,5 +350,68 @@ export class ApiService {
       return of(Object.values(this.mockRequests));
     }
     return this.http.get<RequestSummary[]>('/request');
+  }
+}
+class MockResultEventSource extends EventTarget {
+  readonly url: string;
+  readonly withCredentials = false;
+  private _readyState: number = EventSource.CONNECTING;
+  get readyState(): number {
+    return this._readyState;
+  }
+  onopen: ((this: EventSource, ev: Event) => any) | null = null;
+  onmessage: ((this: EventSource, ev: MessageEvent<any>) => any) | null = null;
+  onerror: ((this: EventSource, ev: Event) => any) | null = null;
+
+  private timerId: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(private readonly requestId: string, private readonly payloads: string[]) {
+    super();
+    this.url = `/requests/${encodeURIComponent(requestId)}/result`;
+    this.scheduleOpen();
+  }
+
+  close(): void {
+    this.clearTimer();
+    this._readyState = EventSource.CLOSED;
+  }
+
+  private scheduleOpen(): void {
+    this.timerId = setTimeout(() => {
+      this._readyState = EventSource.OPEN;
+      const openEvent = new Event('open');
+      this.dispatchEvent(openEvent);
+      if (typeof this.onopen === 'function') {
+        this.onopen.call(this as unknown as EventSource, openEvent);
+      }
+      this.emitChunk(0);
+    }, 220);
+  }
+
+  private emitChunk(index: number): void {
+    if (this.readyState === EventSource.CLOSED) return;
+    if (index >= this.payloads.length) {
+      this.sendMessage('[DONE]');
+      this._readyState = EventSource.CLOSED;
+      return;
+    }
+    const chunk = this.payloads[index];
+    this.sendMessage(chunk);
+    this.timerId = setTimeout(() => this.emitChunk(index + 1), 420);
+  }
+
+  private sendMessage(payload: string): void {
+    const message = new MessageEvent('message', { data: payload });
+    this.dispatchEvent(message);
+    if (typeof this.onmessage === 'function') {
+      this.onmessage.call(this as unknown as EventSource, message);
+    }
+  }
+
+  private clearTimer(): void {
+    if (this.timerId) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
   }
 }
