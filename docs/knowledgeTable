@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html class="light" lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Knowledge Base</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#137fec",
+              "background-light": "#f6f7f8",
+              "background-dark": "#101922",
+              "content-light": "#ffffff",
+              "content-dark": "#182431",
+              "text-light-primary": "#0d141b",
+              "text-dark-primary": "#f6f7f8",
+              "text-light-secondary": "#4c739a",
+              "text-dark-secondary": "#a2b4c5",
+              "border-light": "#e7edf3",
+              "border-dark": "#2a3947",
+            },
+            fontFamily: {
+              "display": ["Inter", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 1;
+      }
+      .group:not([open]) .material-symbols-outlined.rotate-on-open { transform: rotate(0deg); }
+      .group[open] .material-symbols-outlined.rotate-on-open { transform: rotate(180deg); }
+      .material-symbols-outlined.no-fill { font-variation-settings: 'FILL' 0; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-light-primary dark:text-text-dark-primary">
+<div class="flex flex-col min-h-screen w-full">
+<main class="flex-1 flex flex-col overflow-hidden">
+<div class="flex-1 overflow-y-auto p-6 lg:p-8">
+<div class="flex flex-wrap items-center gap-4 mb-6">
+<div class="flex-1 min-w-[250px]">
+<label class="flex flex-col min-w-40 h-10 w-full">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-text-light-secondary dark:text-text-dark-secondary flex border-none bg-content-light dark:bg-content-dark items-center justify-center pl-4 rounded-l-lg border-r-0">
+<span class="material-symbols-outlined no-fill" style="font-size: 24px;">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-r-lg text-text-light-primary dark:text-text-dark-primary focus:outline-0 focus:ring-0 border-none bg-content-light dark:bg-content-dark h-full placeholder:text-text-light-secondary dark:placeholder:text-text-dark-secondary px-4 pl-2 text-base font-normal leading-normal" placeholder="Search by keyword..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex items-center gap-4 flex-wrap">
+<div class="relative min-w-[180px]">
+<select class="form-select w-full h-10 rounded-lg border-border-light dark:border-border-dark bg-content-light dark:bg-content-dark text-text-light-primary dark:text-text-dark-primary focus:ring-primary focus:border-primary">
+<option>All Tags</option>
+<option>Onboarding</option>
+<option>DevEnv</option>
+<option>API</option>
+<option>Marketing</option>
+</select>
+</div>
+<div class="relative min-w-[180px]">
+<select class="form-select w-full h-10 rounded-lg border-border-light dark:border-border-dark bg-content-light dark:bg-content-dark text-text-light-primary dark:text-text-dark-primary focus:ring-primary focus:border-primary">
+<option>All Authors</option>
+<option>Yuki Tanaka</option>
+<option>Alex Chen</option>
+<option>Sarah Lee</option>
+<option>HR Department</option>
+</select>
+</div>
+</div>
+<div class="ml-auto">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined no-fill mr-2" style="font-size: 20px;">add</span>
+<span class="truncate">New</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<div class="bg-content-light dark:bg-content-dark rounded-xl border border-border-light dark:border-border-dark p-6 flex flex-col gap-4 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+<h3 class="text-lg font-bold text-text-light-primary dark:text-text-dark-primary">How to set up the new development environment</h3>
+<p class="text-sm text-text-light-secondary dark:text-text-dark-secondary flex-grow line-clamp-3">A step-by-step guide for onboarding new engineers to the project, covering all necessary tools and configurations.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">Onboarding</span>
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">DevEnv</span>
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">Setup</span>
+</div>
+<div class="flex items-center gap-2 text-xs text-text-light-secondary dark:text-text-dark-secondary pt-2 border-t border-border-light dark:border-border-dark mt-2">
+<span class="material-symbols-outlined no-fill" style="font-size: 16px;">person</span>
+<span>Yuki Tanaka</span>
+<span class="mx-1">·</span>
+<span>2 days ago</span>
+</div>
+</div>
+<div class="bg-content-light dark:bg-content-dark rounded-xl border border-border-light dark:border-border-dark p-6 flex flex-col gap-4 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+<h3 class="text-lg font-bold text-text-light-primary dark:text-text-dark-primary">API Documentation v2.1</h3>
+<p class="text-sm text-text-light-secondary dark:text-text-dark-secondary flex-grow line-clamp-3">Comprehensive guide to the new endpoints, authentication methods, and rate limits for our public API.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">API</span>
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">Documentation</span>
+</div>
+<div class="flex items-center gap-2 text-xs text-text-light-secondary dark:text-text-dark-secondary pt-2 border-t border-border-light dark:border-border-dark mt-2">
+<span class="material-symbols-outlined no-fill" style="font-size: 16px;">person</span>
+<span>Alex Chen</span>
+<span class="mx-1">·</span>
+<span>5 days ago</span>
+</div>
+</div>
+<div class="bg-content-light dark:bg-content-dark rounded-xl border border-border-light dark:border-border-dark p-6 flex flex-col gap-4 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+<h3 class="text-lg font-bold text-text-light-primary dark:text-text-dark-primary">Q3 Marketing Launch Plan</h3>
+<p class="text-sm text-text-light-secondary dark:text-text-dark-secondary flex-grow line-clamp-3">Outlines the strategy, target audience, and key performance indicators for the upcoming "Project Phoenix" launch.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">Marketing</span>
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">Strategy</span>
+</div>
+<div class="flex items-center gap-2 text-xs text-text-light-secondary dark:text-text-dark-secondary pt-2 border-t border-border-light dark:border-border-dark mt-2">
+<span class="material-symbols-outlined no-fill" style="font-size: 16px;">person</span>
+<span>Sarah Lee</span>
+<span class="mx-1">·</span>
+<span>last week</span>
+</div>
+</div>
+<div class="bg-content-light dark:bg-content-dark rounded-xl border border-border-light dark:border-border-dark p-6 flex flex-col gap-4 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+<h3 class="text-lg font-bold text-text-light-primary dark:text-text-dark-primary">Company Holiday Policy 2024</h3>
+<p class="text-sm text-text-light-secondary dark:text-text-dark-secondary flex-grow line-clamp-3">Official list of company holidays and guidelines for requesting paid time off.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">HR</span>
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">Policy</span>
+</div>
+<div class="flex items-center gap-2 text-xs text-text-light-secondary dark:text-text-dark-secondary pt-2 border-t border-border-light dark:border-border-dark mt-2">
+<span class="material-symbols-outlined no-fill" style="font-size: 16px;">person</span>
+<span>HR Department</span>
+<span class="mx-1">·</span>
+<span>2 weeks ago</span>
+</div>
+</div>
+<div class="bg-content-light dark:bg-content-dark rounded-xl border border-border-light dark:border-border-dark p-6 flex flex-col gap-4 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+<h3 class="text-lg font-bold text-text-light-primary dark:text-text-dark-primary">Design System: Component Usage</h3>
+<p class="text-sm text-text-light-secondary dark:text-text-dark-secondary flex-grow line-clamp-3">Guidelines on when and how to use primary buttons, secondary buttons, and ghost buttons in new UI features.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">Design</span>
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">UI/UX</span>
+<span class="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">Components</span>
+</div>
+<div class="flex items-center gap-2 text-xs text-text-light-secondary dark:text-text-dark-secondary pt-2 border-t border-border-light dark:border-border-dark mt-2">
+<span class="material-symbols-outlined no-fill" style="font-size: 16px;">person</span>
+<span>Emily Carter</span>
+<span class="mx-1">·</span>
+<span>3 weeks ago</span>
+</div>
+</div>
+<div class="col-span-full mt-10 flex flex-col items-center justify-center text-center p-8 bg-content-light dark:bg-content-dark rounded-xl border border-dashed border-border-light dark:border-border-dark">
+<span class="material-symbols-outlined text-5xl text-text-light-secondary dark:text-text-dark-secondary mb-4">search_off</span>
+<h4 class="text-xl font-bold text-text-light-primary dark:text-text-dark-primary">No Results Found</h4>
+<p class="text-text-light-secondary dark:text-text-dark-secondary mt-1">Try a different keyword or check your filters.</p>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
