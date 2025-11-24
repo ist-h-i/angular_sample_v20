@@ -1,8 +1,10 @@
-import { Component, Input, ViewChild, ElementRef, AfterViewInit, HostListener } from '@angular/core';
+import { Component, Input, ViewChild, ElementRef, AfterViewInit, HostListener, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { InitialDataStore } from '../../core/stores/initial-data.store';
 
 @Component({
   selector: 'app-top-bar',
-  imports: [],
+  imports: [RouterLink],
   templateUrl: './top-bar.html',
   styleUrl: './top-bar.scss',
 })
@@ -18,6 +20,11 @@ export class TopBar implements AfterViewInit {
 
   @ViewChild('topbar', { static: true })
   private topbarEl?: ElementRef<HTMLElement>;
+
+  private readonly initialDataStore = inject(InitialDataStore);
+  protected readonly isAdmin = computed(
+    () => this.initialDataStore.initialData()?.user?.is_admin ?? false,
+  );
 
   ngAfterViewInit(): void {
     this.updateTopbarHeightVar();

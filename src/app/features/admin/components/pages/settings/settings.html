@@ -1,0 +1,84 @@
+<div class="admin-settings-page min-h-full bg-slate-50 px-4 py-6 sm:px-6">
+  <div class="mx-auto flex max-w-6xl flex-col gap-6">
+    <section class="rounded-3xl bg-white/70 p-6 shadow-sm backdrop-blur">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-[0.4em] text-slate-400">管理者専用</p>
+          <h1 class="text-3xl font-semibold text-slate-900">環境変数一覧</h1>
+          <p class="text-sm text-slate-500">
+            {{ userLabel() }} でログインしています。
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          @if (isEditing()) {
+            <app-secondary-button label="キャンセル" (clicked)="cancelEditing()"></app-secondary-button>
+            <app-primary-button
+              label="決定"
+              [disabled]="!hasChanges() || isSaving()"
+              (clicked)="submitChanges()"
+            ></app-primary-button>
+          } @else {
+            <app-primary-button label="編集" (clicked)="startEditing()"></app-primary-button>
+          }
+        </div>
+      </div>
+      @if (isSaving()) {
+        <p class="mt-3 text-xs font-medium text-accent-600">更新内容を保存しています…</p>
+      }
+    </section>
+
+    @if (isLoading()) {
+      <div class="rounded-3xl bg-white p-6 text-center text-slate-500 shadow-sm">読み込み中…</div>
+    } @else {
+      @if (loadError()) {
+        <div class="rounded-3xl border border-danger bg-danger-50 p-6 text-sm font-medium text-danger shadow-sm">
+          環境変数の取得に失敗しました。再読み込みしてください。
+        </div>
+      } @else {
+        @if (entries().length) {
+          <div class="grid gap-4 md:grid-cols-2">
+            @for (entry of entries(); track entry.key) {
+              <article class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <header class="flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-400">{{ entry.key }}</p>
+                    <h2 class="text-lg font-semibold text-slate-900">
+                      {{ entry.description ?? '（説明なし）' }}
+                    </h2>
+                  </div>
+                  @if (entry.last_updated) {
+                    <time class="text-xs text-slate-400">
+                      最終更新 {{ entry.last_updated }}
+                    </time>
+                  }
+                </header>
+                @if (isEditing()) {
+                  <textarea
+                    class="min-h-[4rem] w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                    [value]="getEditValue(entry)"
+                    (input)="handleInput(entry, $event)"
+                    rows="2"
+                  ></textarea>
+                  <p class="text-xs text-slate-500">
+                    この値は API に送信され、実行時の環境設定が更新されます。
+                  </p>
+                } @else {
+                  <p class="font-mono text-base text-slate-900 break-words">{{ entry.value }}</p>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <div class="rounded-3xl border border-slate-200 bg-white p-6 text-center text-slate-500 shadow-sm">
+            管理対象の環境変数はありません。
+          </div>
+        }
+      }
+    }
+    @if (saveError()) {
+      <div class="rounded-3xl border border-danger bg-danger-50 p-5 text-sm font-semibold text-danger shadow-sm">
+        変更の保存中にエラーが発生しました。{{ saveError() }}
+      </div>
+    }
+  </div>
+</div>

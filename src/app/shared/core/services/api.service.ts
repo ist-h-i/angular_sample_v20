@@ -6,6 +6,7 @@ import type { RequestSummary } from '../models/request-summary.model';
 import type { RequestDetail } from '../models/request.model';
 import type { RequestStatus } from '../models/request-status.model';
 import type { User } from '../models/user.model';
+import type { EnvironmentVariable } from '../models/environment-variable.model';
 
 export interface CreateRequestPayload {
   query_text: string;
@@ -103,6 +104,33 @@ export class ApiService {
     is_admin: true,
     is_support: false,
   };
+
+  private mockEnvironmentVariables: EnvironmentVariable[] = [
+    {
+      key: 'NODE_ENV',
+      value: 'development',
+      description: 'ランタイムの現在モード',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'API_BASE_URL',
+      value: '/api',
+      description: 'バックエンドへのベース URL',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'FEATURE_NEW_INBOX',
+      value: 'enabled',
+      description: '新しいインボックス UI を切り替えるフラグ',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'MAX_CONCURRENT_REQUESTS',
+      value: '12',
+      description: 'ユーザーが同時に送信できるリクエスト数',
+      last_updated: new Date().toISOString(),
+    },
+  ];
 
   private promote(s: RequestStatus): RequestStatus {
     if (s === 'pending') return Math.random() > 0.6 ? 'processing' : 'pending';
@@ -292,5 +320,33 @@ export class ApiService {
       return of(Object.values(this.mockRequests));
     }
     return this.http.get<RequestSummary[]>('/request');
+  }
+
+  // GET /admin/environment  Eenvironment variables each admin can view/edit
+  getEnvironmentVariables(): Observable<EnvironmentVariable[]> {
+    if (this.useMock) {
+      return of(this.mockEnvironmentVariables.map((entry) => ({ ...entry })));
+    }
+    return this.http.get<EnvironmentVariable[]>('/admin/environment');
+  }
+
+  // POST /admin/environment  Ereplace env values
+  updateEnvironmentVariables(payload: EnvironmentVariable[]): Observable<EnvironmentVariable[]> {
+    if (this.useMock) {
+      const now = new Date().toISOString();
+      const next = this.mockEnvironmentVariables.map((entry) => {
+        const updated = payload.find((candidate) => candidate.key === entry.key);
+        if (!updated) return entry;
+        return {
+          ...entry,
+          value: updated.value,
+          description: updated.description ?? entry.description,
+          last_updated: now,
+        };
+      });
+      this.mockEnvironmentVariables = next;
+      return of(next.map((entry) => ({ ...entry })));
+    }
+    return this.http.post<EnvironmentVariable[]>('/admin/environment', payload);
   }
 }

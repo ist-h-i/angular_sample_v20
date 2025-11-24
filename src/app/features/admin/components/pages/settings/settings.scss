@@ -1,0 +1,9 @@
+@use 'tailwindcss';
+
+:host {
+  display: block;
+}
+
+.admin-settings-page {
+  min-height: calc(100vh - var(--topbar-height, 56px));
+}
