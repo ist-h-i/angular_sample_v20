@@ -4,80 +4,284 @@
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p class="text-xs uppercase tracking-[0.4em] text-slate-400">管理者専用</p>
-          <h1 class="text-3xl font-semibold text-slate-900">環境変数一覧</h1>
+          <h1 class="text-3xl font-semibold text-slate-900">環境変数ダッシュボード</h1>
           <p class="text-sm text-slate-500">
-            {{ userLabel() }} でログインしています。
+            {{ userLabel() }} でログイン中。ここから環境変数と AI モデルの構成を調整できます。
           </p>
         </div>
         <div class="flex items-center gap-2">
           @if (isEditing()) {
             <app-secondary-button label="キャンセル" (clicked)="cancelEditing()"></app-secondary-button>
             <app-primary-button
-              label="決定"
+              label="保存する"
               [disabled]="!hasChanges() || isSaving()"
               (clicked)="submitChanges()"
             ></app-primary-button>
           } @else {
-            <app-primary-button label="編集" (clicked)="startEditing()"></app-primary-button>
+            <app-primary-button label="編集する" (clicked)="startEditing()"></app-primary-button>
           }
         </div>
       </div>
       @if (isSaving()) {
-        <p class="mt-3 text-xs font-medium text-accent-600">更新内容を保存しています…</p>
+        <p class="mt-3 text-xs font-medium text-accent-600">変更を保存しています…</p>
       }
     </section>
 
     @if (isLoading()) {
       <div class="rounded-3xl bg-white p-6 text-center text-slate-500 shadow-sm">読み込み中…</div>
     } @else {
-      @if (loadError()) {
-        <div class="rounded-3xl border border-danger bg-danger-50 p-6 text-sm font-medium text-danger shadow-sm">
-          環境変数の取得に失敗しました。再読み込みしてください。
-        </div>
-      } @else {
-        @if (entries().length) {
-          <div class="grid gap-4 md:grid-cols-2">
-            @for (entry of entries(); track entry.key) {
-              <article class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <header class="flex items-center justify-between gap-3">
-                  <div>
-                    <p class="text-xs uppercase tracking-[0.3em] text-slate-400">{{ entry.key }}</p>
-                    <h2 class="text-lg font-semibold text-slate-900">
-                      {{ entry.description ?? '（説明なし）' }}
-                    </h2>
+      <div class="flex flex-col gap-6">
+        <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-[0.4em] text-slate-400">AIモデル</p>
+              <h2 class="text-2xl font-semibold text-slate-900">モデルごとの制限と推論設定</h2>
+              <p class="text-sm text-slate-500">
+                モデル名、コール制限、REASONING_EFFORT などをまとめて管理できます。
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <p class="text-xs font-medium uppercase tracking-[0.3em] text-slate-400">構成</p>
+              @if (isEditing()) {
+                <button
+                  type="button"
+                  class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
+                  (click)="addModelDraft()"
+                >
+                  モデルを追加
+                </button>
+              }
+            </div>
+          </div>
+          @if (aiModelConfigs().length) {
+            <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              @for (model of aiModelConfigs(); track model.id) {
+                <article class="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50/80 p-5 shadow-sm">
+                  <header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p class="text-xs uppercase tracking-[0.3em] text-slate-400">モデル ID</p>
+                      <h3 class="text-xl font-semibold text-slate-900">{{ model.displayName }}</h3>
+                      <p class="text-xs text-slate-500">{{ model.entries.length }} 個の環境変数</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-medium text-slate-500">AIモデル設定</span>
+                      @if (isEditing()) {
+                        <button
+                          type="button"
+                          class="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 transition hover:border-red-300"
+                          (click)="markModelForRemoval(model.id)"
+                        >
+                          削除
+                        </button>
+                      }
+                    </div>
+                  </header>
+                  <div class="grid gap-3">
+                    @for (field of aiModelFieldOrder; track field) {
+                      <div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3">
+                        <div class="flex items-center justify-between gap-2">
+                          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">
+                            {{ aiModelFieldMeta[field].label }}
+                          </p>
+                        </div>
+                        <p class="text-xs text-slate-400">{{ aiModelFieldMeta[field].helper }}</p>
+                        @if (isEditing()) {
+                          @if (getModelFieldEntry(model, field)) {
+                            <input
+                              class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                              [value]="getEditValue(getModelFieldEntry(model, field)!)"
+                              (input)="handleInput(getModelFieldEntry(model, field)!, $event)"
+                              [type]="aiModelFieldMeta[field].inputType"
+                              [attr.inputmode]="aiModelFieldMeta[field].inputType === 'number' ? 'numeric' : 'text'"
+                            />
+                          } @else {
+                            <p class="mt-2 text-xs font-medium text-red-600">この環境変数は未登録です</p>
+                          }
+                        } @else {
+                          <p class="mt-2 font-mono text-base text-slate-900 break-words">
+                            {{ formatValueForDisplay(getModelFieldEntry(model, field)?.value) || '未設定' }}
+                          </p>
+                        }
+                      </div>
+                    }
                   </div>
-                  @if (entry.last_updated) {
-                    <time class="text-xs text-slate-400">
-                      最終更新 {{ entry.last_updated }}
-                    </time>
-                  }
-                </header>
-                @if (isEditing()) {
-                  <textarea
-                    class="min-h-[4rem] w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
-                    [value]="getEditValue(entry)"
-                    (input)="handleInput(entry, $event)"
-                    rows="2"
-                  ></textarea>
-                  <p class="text-xs text-slate-500">
-                    この値は API に送信され、実行時の環境設定が更新されます。
-                  </p>
-                } @else {
-                  <p class="font-mono text-base text-slate-900 break-words">{{ entry.value }}</p>
-                }
-              </article>
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="mt-4 text-sm text-slate-500">登録済みの AI モデルはありません。</p>
+          }
+          @if (isEditing() && aiModelNewDrafts().length) {
+            <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              @for (draft of aiModelNewDrafts(); track draft.uid) {
+                <article class="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-100 p-5 shadow-sm">
+                  <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="grid gap-2">
+                      <label class="text-xs uppercase tracking-[0.3em] text-slate-400">モデル ID</label>
+                      <input
+                        type="text"
+                        class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                        [value]="draft.modelId"
+                        (input)="updateModelDraftMeta(draft.uid, 'modelId', $event.target.value)"
+                      />
+                      <label class="text-xs uppercase tracking-[0.3em] text-slate-400">表示名</label>
+                      <input
+                        type="text"
+                        class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                        [value]="draft.displayName"
+                        (input)="updateModelDraftMeta(draft.uid, 'displayName', $event.target.value)"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      class="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 transition hover:border-red-300"
+                      (click)="removeModelDraft(draft.uid)"
+                    >
+                      削除
+                    </button>
+                  </header>
+                  <div class="grid gap-3">
+                    @for (field of aiModelFieldOrder; track field) {
+                      <div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3">
+                        <p class="text-xs uppercase tracking-[0.3em] text-slate-400">
+                          {{ aiModelFieldMeta[field].label }}
+                        </p>
+                        <p class="text-xs text-slate-400">{{ aiModelFieldMeta[field].helper }}</p>
+                        <input
+                          class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                          [value]="draft.fields[field] ?? ''"
+                          (input)="updateModelDraftField(draft.uid, field, $event.target.value)"
+                          [type]="aiModelFieldMeta[field].inputType"
+                          [attr.inputmode]="aiModelFieldMeta[field].inputType === 'number' ? 'numeric' : 'text'"
+                        />
+                      </div>
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-[0.4em] text-slate-400">環境変数</p>
+              <h2 class="text-2xl font-semibold text-slate-900">グローバル設定</h2>
+              <p class="text-sm text-slate-500">
+                サービス全体で使うキーをここで管理します。説明付きで表示されます。
+              </p>
+            </div>
+            @if (isEditing()) {
+              <button
+                type="button"
+                class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
+                (click)="addGeneralDraft()"
+              >
+                新しい環境変数
+              </button>
             }
           </div>
-        } @else {
-          <div class="rounded-3xl border border-slate-200 bg-white p-6 text-center text-slate-500 shadow-sm">
-            管理対象の環境変数はありません。
+          @if (generalEntries().length) {
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+              @for (entry of generalEntries(); track entry.key) {
+                <article class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
+                  <header class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-xs uppercase tracking-[0.3em] text-slate-400">{{ entry.key }}</p>
+                      <h2 class="text-lg font-semibold text-slate-900">
+                        {{ entry.description ?? '説明なし' }}
+                      </h2>
+                    </div>
+                    @if (isEditing()) {
+                      <button
+                        type="button"
+                        class="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 transition hover:border-red-300"
+                        (click)="markEntryForRemoval(entry.key)"
+                      >
+                        削除
+                      </button>
+                    }
+                  </header>
+                  @if (isEditing()) {
+                    <textarea
+                      class="min-h-[4rem] w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                      [value]="getEditValue(entry)"
+                      (input)="handleInput(entry, $event)"
+                      rows="2"
+                    ></textarea>
+                    <p class="text-xs text-slate-500">
+                      この値は API に送信され、実行時の環境設定が更新されます。
+                    </p>
+                  } @else {
+                    <p class="font-mono text-base text-slate-900 break-words">{{ formatValueForDisplay(entry.value) }}</p>
+                    @if (entry.last_updated) {
+                      <p class="text-xs text-slate-400">最終更新 {{ entry.last_updated }}</p>
+                    }
+                  }
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="mt-4 text-sm text-slate-500">まだ一般の環境変数は登録されていません。</p>
+          }
+          @if (isEditing() && generalDrafts().length) {
+            <div class="mt-6 grid gap-4 md:grid-cols-2">
+              @for (draft of generalDrafts(); track draft.uid) {
+                <article class="flex flex-col gap-3 rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 shadow-sm">
+                  <header class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="grid gap-2">
+                      <label class="text-xs uppercase tracking-[0.3em] text-slate-400">キー</label>
+                      <input
+                        type="text"
+                        class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                        [value]="draft.key"
+                        (input)="updateGeneralDraft(draft.uid, 'key', $event.target.value)"
+                      />
+                      <label class="text-xs uppercase tracking-[0.3em] text-slate-400">説明</label>
+                      <input
+                        type="text"
+                        class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                        [value]="draft.description"
+                        (input)="updateGeneralDraft(draft.uid, 'description', $event.target.value)"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      class="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 transition hover:border-red-300"
+                      (click)="removeGeneralDraft(draft.uid)"
+                    >
+                      削除
+                    </button>
+                  </header>
+                  <label class="text-xs uppercase tracking-[0.3em] text-slate-400">値</label>
+                  <textarea
+                    class="min-h-[4rem] w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                    [value]="draft.value"
+                    (input)="updateGeneralDraft(draft.uid, 'value', $any($event.target).value)"
+                    rows="2"
+                  ></textarea>
+                </article>
+              }
+            </div>
+          }
+        </section>
+        @if (
+          !aiModelConfigs().length &&
+          !generalEntries().length &&
+          !aiModelNewDrafts().length &&
+          !generalDrafts().length
+        ) {
+          <div class="rounded-3xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-slate-500 shadow-sm">
+            <p class="text-sm">まだ環境変数が登録されていません。編集モードで追加してください。</p>
           </div>
         }
-      }
+      </div>
     }
+
     @if (saveError()) {
       <div class="rounded-3xl border border-danger bg-danger-50 p-5 text-sm font-semibold text-danger shadow-sm">
-        変更の保存中にエラーが発生しました。{{ saveError() }}
+        変更の保存中にエラーが発生しました: {{ saveError() }}
       </div>
     }
   </div>

@@ -127,7 +127,55 @@ export class ApiService {
     {
       key: 'MAX_CONCURRENT_REQUESTS',
       value: '12',
-      description: 'ユーザーが同時に送信できるリクエスト数',
+      description: '同時リクエストの上限',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'AI_MODEL_GPT4O_MINI_NAME',
+      value: 'gpt-4o-mini',
+      description: 'gpt-4o-mini を使うモデル',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'AI_MODEL_GPT4O_MINI_CALLS_PER_MINUTE',
+      value: '60',
+      description: '1 分あたりの gpt-4o-mini 呼び出し上限',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'AI_MODEL_GPT4O_MINI_CALLS_PER_MONTH',
+      value: '120000',
+      description: '月間の gpt-4o-mini 呼び出し上限',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'AI_MODEL_GPT4O_MINI_REASONING_EFFORT',
+      value: 'medium',
+      description: 'gpt-4o-mini の推論精度パラメータ',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'AI_MODEL_GPT4O_8K_NAME',
+      value: 'gpt-4o-8k',
+      description: 'より大型の gpt-4o-8k モデル',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'AI_MODEL_GPT4O_8K_CALLS_PER_MINUTE',
+      value: '30',
+      description: '1 分あたりの gpt-4o-8k 呼び出し上限',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'AI_MODEL_GPT4O_8K_CALLS_PER_MONTH',
+      value: '50000',
+      description: '月間の gpt-4o-8k 呼び出し上限',
+      last_updated: new Date().toISOString(),
+    },
+    {
+      key: 'AI_MODEL_GPT4O_8K_REASONING_EFFORT',
+      value: 'high',
+      description: 'gpt-4o-8k の推論精度パラメータ',
       last_updated: new Date().toISOString(),
     },
   ];
@@ -334,13 +382,14 @@ export class ApiService {
   updateEnvironmentVariables(payload: EnvironmentVariable[]): Observable<EnvironmentVariable[]> {
     if (this.useMock) {
       const now = new Date().toISOString();
-      const next = this.mockEnvironmentVariables.map((entry) => {
-        const updated = payload.find((candidate) => candidate.key === entry.key);
-        if (!updated) return entry;
+      const existingEntries = Object.fromEntries(
+        this.mockEnvironmentVariables.map((entry) => [entry.key, entry]),
+      );
+      const next = payload.map((entry) => {
+        const prev = existingEntries[entry.key];
         return {
           ...entry,
-          value: updated.value,
-          description: updated.description ?? entry.description,
+          description: entry.description?.trim() || prev?.description || '環境変数',
           last_updated: now,
         };
       });
