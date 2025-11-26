@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import type { Message } from '../../../../../shared/core/models/message.model';
 
 @Component({
@@ -9,4 +9,14 @@ import type { Message } from '../../../../../shared/core/models/message.model';
 })
 export class Chat {
   @Input() messages: Message[] = [];
+  @Output() copyRequested = new EventEmitter<Message>();
+  @Output() resendRequested = new EventEmitter<Message>();
+
+  onCopy(message: Message): void {
+    this.copyRequested.emit(message);
+  }
+
+  onResend(message: Message): void {
+    this.resendRequested.emit(message);
+  }
 }
