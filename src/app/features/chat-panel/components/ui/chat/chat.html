@@ -1,6 +1,6 @@
 @if (messages && messages.length > 0) {
   <div class="space-y-4">
-    @for (m of messages; track m) {
+    @for (m of messages; track m; let i = $index) {
       <div class="flex items-start gap-3 message-row">
         <div class="w-full">
           <!-- Bubble container -->
@@ -14,6 +14,11 @@
               class="message inline-block max-w-[78%] break-words p-3 rounded-[12px] shadow-sm transition-transform duration-200 ease-out transform"
               [class.bubble--user]="m.role === 'user'"
               [class.bubble--assistant]="m.role !== 'user'"
+              [class.message--selected]="selectedMessageIndex === i"
+              (focus)="onMessageSelect(i, m.role)"
+              (mousedown)="onMessageSelect(i, m.role)"
+              (blur)="clearSelection()"
+              [attr.tabindex]="m.role !== 'user' ? 0 : -1"
             >
               <div class="text-sm whitespace-pre-wrap">{{ m.content }}</div>
             </article>

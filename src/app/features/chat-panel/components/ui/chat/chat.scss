@@ -8,6 +8,7 @@
   transition: transform 200ms ease-out, opacity 200ms ease-out;
   box-sizing: border-box;
   opacity: 1;
+  user-select: none;
 }
 
 .bubble--user {
@@ -22,6 +23,12 @@
   background: var(--panel);
   border: 1px solid var(--panel-border);
   align-self: flex-start;
+  user-select: text;
+}
+
+.message--selected {
+  box-shadow: 0 0 0 2px var(--accent-300), var(--muted-shadow);
+  background: color-mix(in srgb, var(--panel) 85%, var(--accent-50));
 }
 
 .message-row {
