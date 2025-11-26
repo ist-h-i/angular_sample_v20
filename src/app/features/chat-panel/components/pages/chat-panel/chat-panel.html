@@ -9,7 +9,11 @@
   <div class="flex-1 overflow-hidden">
     <div id="chatWindow" aria-live="polite" class="bg-slate-50 rounded-lg p-4 h-full overflow-auto border border-slate-100">
       <!-- Child UI component: message rendering -->
-      <app-chat [messages]="messages"></app-chat>
+      <app-chat
+        [messages]="messages"
+        [selectedMessageIndex]="selectedMessageIndex"
+        (selectMessage)="onMessageSelected($event)"
+      ></app-chat>
     </div>
   </div>
 

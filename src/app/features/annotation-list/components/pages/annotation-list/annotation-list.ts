@@ -22,13 +22,17 @@ export class AnnotationList {
   // Hydrate when selected request detail changes
   private readonly _hydrate = effect(() => {
     const detail = this.selectedStore.detail();
-    const annotations: AnnotationModel[] = [];
+    const selectedIndex = this.selectedStore.selectedMessageIndex();
     const messages = detail?.messages ?? [];
-    for (const m of messages) {
-      if (m.annotations && m.annotations.length) {
-        annotations.push(...m.annotations);
-      }
-    }
+    const selectedMessage =
+      selectedIndex != null && selectedIndex >= 0 && selectedIndex < messages.length
+        ? messages[selectedIndex]
+        : null;
+    const content = selectedMessage?.content ?? '';
+    const annotations =
+      selectedMessage?.annotations?.filter(annotation =>
+        annotation?.url ? content.includes(annotation.url) : false,
+      ) ?? [];
     this._annotations.set(annotations);
   });
 

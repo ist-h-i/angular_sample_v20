@@ -19,11 +19,13 @@ export class SelectedRequestStore {
   private readonly _detail = signal<RequestDetail | null>(null);
   private readonly _isLoading = signal<boolean>(false);
   private readonly _error = signal<unknown | null>(null);
+  private readonly _selectedMessageIndex = signal<number | null>(null);
 
   readonly selectedId = this._selectedId.asReadonly();
   readonly detail = this._detail.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly selectedMessageIndex = this._selectedMessageIndex.asReadonly();
 
   // Convenience derived values
   readonly hasDetail = computed(() => this._detail() != null);
@@ -38,6 +40,12 @@ export class SelectedRequestStore {
         this.stopResultStream(previousStreamedId, false);
       }
       previousStreamedId = currentId;
+    });
+
+    effect(() => {
+      // Clear message selection when the active request changes
+      this._selectedId();
+      this._selectedMessageIndex.set(null);
     });
   }
 
@@ -95,6 +103,11 @@ export class SelectedRequestStore {
     this._detail.set(null);
     this._error.set(null);
     this._isLoading.set(false);
+    this._selectedMessageIndex.set(null);
+  }
+
+  setSelectedMessageIndex(index: number | null): void {
+    this._selectedMessageIndex.set(index);
   }
 
   private async loadDetail(id: string): Promise<void> {
