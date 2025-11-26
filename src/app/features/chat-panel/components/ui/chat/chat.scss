@@ -29,3 +29,59 @@
   align-items: flex-start;
   gap: 12px;
 }
+
+.message-actions {
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.75);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+  box-shadow: var(--muted-shadow);
+  position: relative;
+}
+
+.action-button:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.action-button:active {
+  transform: translateY(1px);
+}
+
+.action-button svg {
+  opacity: 0.85;
+}
+
+.action-button .tooltip {
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--panel);
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--muted-shadow);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.action-button:focus-visible .tooltip,
+.action-button:hover .tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

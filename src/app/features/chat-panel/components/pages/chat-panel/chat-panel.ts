@@ -93,6 +93,38 @@ export class ChatPanel implements AfterViewInit {
     });
   }
 
+  onCopyMessage(message: Message): void {
+    if (!message?.content) return;
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(message.content).catch((error) => {
+        console.error('Failed to copy message', error);
+      });
+      return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = message.content;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'absolute';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
+
+  onResendMessage(message: Message): void {
+    const text = message?.content?.trim();
+    if (!text) return;
+
+    this.sendMessage(text);
+
+    if (this.userInputRef?.nativeElement) {
+      this.userInputRef.nativeElement.focus();
+    }
+  }
+
   private resizeTextarea(): void {
     const el = this.userInputRef.nativeElement;
     if (!el) return;
