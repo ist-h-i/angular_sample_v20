@@ -20,7 +20,23 @@
               (blur)="clearSelection()"
               [attr.tabindex]="m.role !== 'user' ? 0 : -1"
             >
-              <div class="text-sm whitespace-pre-wrap">{{ m.content }}</div>
+              <div class="text-sm whitespace-pre-wrap leading-relaxed message__content">
+                @for (segment of getSegments(m); let segmentIndex = $index; track segmentIndex) {
+                  @if (segment.type === 'link') {
+                    <a
+                      class="message-link inline-flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-800"
+                      [href]="segment.url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <span class="message-link__badge" aria-label="参照 {{ segment.index }}">{{ segment.index }}</span>
+                      <span class="message-link__text underline decoration-2 decoration-blue-200">{{ segment.content }}</span>
+                    </a>
+                  } @else {
+                    <span class="message__text">{{ segment.content }}</span>
+                  }
+                }
+              </div>
             </article>
           </div>
         </div>

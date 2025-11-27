@@ -16,8 +16,8 @@
           出典はありません。
         </div>
       } @else {
-        @for (annotation of annotations(); track annotation.url) {
-          <app-annotation [annotation]="annotation"></app-annotation>
+        @for (annotation of annotations(); track annotation.url; let i = $index) {
+          <app-annotation [annotation]="annotation" [idx]="i"></app-annotation>
         }
       }
     </div>
