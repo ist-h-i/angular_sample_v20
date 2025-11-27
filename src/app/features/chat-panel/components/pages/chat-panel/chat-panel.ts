@@ -21,11 +21,16 @@ export class ChatPanel implements AfterViewInit {
       const detail = this.selectedStore.detail();
       this.messages = detail?.messages ?? [];
     });
+
+    effect(() => {
+      this.selectedMessageIndex = this.selectedStore.selectedMessageIndex();
+    });
   }
 
   public messages: Message[] = [];
   public draft = '';
   public inputValue = '';
+  public selectedMessageIndex: number | null = null;
 
   // Header bindings
   readonly currentTitle = computed(() => this.selectedStore.detail()?.title ?? 'リクエストを選択してください');
@@ -59,6 +64,11 @@ export class ChatPanel implements AfterViewInit {
 
   onSendClick(): void {
     this.trySend();
+  }
+
+  onMessageSelected(index: number | null): void {
+    this.selectedMessageIndex = index;
+    this.selectedStore.setSelectedMessageIndex(index);
   }
 
   public send(): void {
