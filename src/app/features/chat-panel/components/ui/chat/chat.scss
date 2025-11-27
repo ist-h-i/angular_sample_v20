@@ -36,3 +36,42 @@
   align-items: flex-start;
   gap: 12px;
 }
+
+.message__content {
+  display: inline;
+  line-height: 1.6;
+}
+
+.message__text {
+  white-space: inherit;
+}
+
+.message-link {
+  padding: 0.1rem 0.35rem;
+  border-radius: 9999px;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+
+.message-link:hover {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.message-link__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.2rem;
+  width: 1.2rem;
+  border-radius: 9999px;
+  background: rgba(59, 130, 246, 0.15);
+  color: rgb(37, 99, 235);
+  font-size: 0.65rem;
+  font-weight: 700;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.message-link__text {
+  text-decoration-thickness: 2px;
+  text-decoration-color: rgba(147, 197, 253, 0.6);
+  word-break: break-word;
+}
