@@ -14,6 +14,7 @@ export class Request {
   @Input() request: RequestSummary | null = null;
   // When provided, component marks itself selected if ids match
   @Input() selectedRequestId: string | null = null;
+  @Input() isNew = false;
 
   @Output() selectRequest = new EventEmitter<string>();
 

@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { PrimaryButton } from '../../../../../shared/ui/primary-button/primary-button';
 import { SecondaryButton } from '../../../../../shared/ui/secondary-button/secondary-button';
 import { Request } from '../../ui/request/request';
@@ -13,9 +13,11 @@ import { SelectedRequestStore } from '../../../../../shared/core/stores/selected
   templateUrl: './request-queue.html',
   styleUrl: './request-queue.scss',
 })
-export class RequestQueue implements OnInit {
+export class RequestQueue implements OnInit, OnDestroy {
   private readonly facade = inject(RequestFacade);
   private readonly selectedStore = inject(SelectedRequestStore);
+  private readonly knownRequests = signal<Map<string, string | null>>(new Map());
+  private highlightTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   // Normalize facade store (record -> array)
   protected readonly requests = computed((): RequestSummary[] => {
@@ -28,6 +30,53 @@ export class RequestQueue implements OnInit {
       return Object.values(storeSnapshot || {}).map((v) => v as unknown as RequestSummary);
     } catch {
       return [];
+    }
+  });
+
+  protected readonly highlightedRequestId = signal<string | null>(null);
+
+  private readonly trackNewRequestsEffect = effect(() => {
+    const list = this.requests();
+    const previous = untracked(() => this.knownRequests());
+    const next = new Map<string, string | null>();
+
+    if (!list?.length) {
+      if (previous.size) this.knownRequests.set(next);
+      return;
+    }
+
+    if (!previous.size) {
+      for (const req of list) {
+        if (!req?.request_id) continue;
+        next.set(req.request_id, req.last_updated ?? null);
+      }
+      this.knownRequests.set(next);
+      return;
+    }
+
+    let highlightTarget: string | null = null;
+
+    for (const req of list) {
+      const id = req?.request_id;
+      if (!id) continue;
+      const updatedAt = req.last_updated ?? null;
+      const isNew = !previous.has(id);
+      const wasPendingRefreshed =
+        !isNew &&
+        req.status?.toLowerCase() === 'pending' &&
+        updatedAt !== previous.get(id);
+
+      if (isNew || wasPendingRefreshed) {
+        highlightTarget = id;
+      }
+
+      next.set(id, updatedAt);
+    }
+
+    this.knownRequests.set(next);
+
+    if (highlightTarget) {
+      this.setHighlightedRequest(highlightTarget);
     }
   });
 
@@ -87,6 +136,27 @@ export class RequestQueue implements OnInit {
       if (id === displayedId) continue;
       this.facade.startAutoMonitor(id);
       this.facade.resetMonitorForRequest(id);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.trackNewRequestsEffect.destroy();
+    if (this.highlightTimeoutId) {
+      clearTimeout(this.highlightTimeoutId);
+      this.highlightTimeoutId = null;
+    }
+  }
+
+  private setHighlightedRequest(id: string | null): void {
+    this.highlightedRequestId.set(id);
+    if (this.highlightTimeoutId) {
+      clearTimeout(this.highlightTimeoutId);
+    }
+    if (id) {
+      this.highlightTimeoutId = setTimeout(() => {
+        this.highlightedRequestId.set(null);
+        this.highlightTimeoutId = null;
+      }, 1800);
     }
   }
 }
