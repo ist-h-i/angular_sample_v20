@@ -10,37 +10,39 @@
     <div class="text-sm text-gray-500">{{ requestsList.length }} 件アクティブ</div>
   </div>
 
-  <!-- Requests list -->
-  <ul
-    aria-label="リクエスト項目"
-    class="bg-white flex flex-col flex-1 gap-2 overflow-auto mx-2 min-h-0"
-  >
-    @if (requestsList.length) {
-      @for (r of requestsList; track r.request_id) {
-        <li>
-          <app-request
-            [request]="r"
-            [selectedRequestId]="selectedRequestId()"
-            (selectRequest)="onSelectRequest($event)"
-          ></app-request>
-        </li>
+  <div class="flex-1 min-h-0 flex flex-col">
+    <!-- Requests list -->
+    <ul
+      aria-label="リクエスト項目"
+      class="bg-white flex flex-col flex-1 min-h-0 overflow-auto gap-2 mx-2"
+    >
+      @if (requestsList.length) {
+        @for (r of requestsList; track r.request_id) {
+          <li>
+            <app-request
+              [request]="r"
+              [selectedRequestId]="selectedRequestId()"
+              (selectRequest)="onSelectRequest($event)"
+            ></app-request>
+          </li>
+        }
+      } @else {
+        <li class="text-sm text-gray-500">リクエストはありません</li>
       }
-    } @else {
-      <li class="text-sm text-gray-500">リクエストはありません</li>
-    }
-  </ul>
+    </ul>
 
-  <!-- Actions: fixed to bottom of the viewport -->
-  <div class="flex items-center h-14 px-2 gap-2">
-    <app-primary-button
-      label="新しいリクエスト"
-      id="newRequest"
-      (clicked)="handleNewRequestClick()"
-    ></app-primary-button>
-    <app-secondary-button
-      label="更新"
-      id="refreshBtn"
-      (clicked)="refreshClick()"
-    ></app-secondary-button>
+    <!-- Actions: fixed to bottom of the viewport -->
+    <div class="h-14 px-2 gap-2 flex items-center flex-shrink-0 sticky bottom-0 bg-white">
+      <app-primary-button
+        label="新しいリクエスト"
+        id="newRequest"
+        (clicked)="handleNewRequestClick()"
+      ></app-primary-button>
+      <app-secondary-button
+        label="更新"
+        id="refreshBtn"
+        (clicked)="refreshClick()"
+      ></app-secondary-button>
+    </div>
   </div>
 </div>
