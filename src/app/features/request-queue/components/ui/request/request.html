@@ -36,7 +36,14 @@
       </div>
 
       <aside class="rq-card-side flex items-center justify-end" aria-hidden="false">
-        <div [class]="statusPillClass">
+        <div
+          [class]="statusPillClass"
+          role="status"
+          aria-atomic="true"
+          [attr.aria-live]="statusLive"
+          [attr.aria-busy]="isBusy ? 'true' : null"
+          [attr.aria-label]="statusLabel"
+        >
           <span class="sr-only">Status:</span>
           <span class="rq-status-text">{{ request?.status }}</span>
         </div>

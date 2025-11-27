@@ -22,14 +22,30 @@ export class Request {
     return cur != null && cur === (this.selectedRequestId ?? null);
   });
 
+  get status(): RequestStatus | null {
+    return this.request?.status ?? null;
+  }
+
   // CSS class for status pill
   get statusPillClass(): string {
-    const status = this.request?.status ?? '';
+    const status = this.status ?? '';
     const base = 'rq-status rq-status-pill px-3 py-1 rounded-full text-sm font-semibold';
     if (status === 'pending' || status === 'processing') return `${base} pending`;
     if (status === 'completed') return `${base} done`;
     if (status === 'failed') return `${base} error`;
     return base;
+  }
+
+  get isBusy(): boolean {
+    return this.status === 'pending' || this.status === 'processing';
+  }
+
+  get statusLive(): 'polite' | null {
+    return this.status ? 'polite' : null;
+  }
+
+  get statusLabel(): string | null {
+    return this.status ? `ステータス: ${this.status}` : null;
   }
 
   onClick(): void {
