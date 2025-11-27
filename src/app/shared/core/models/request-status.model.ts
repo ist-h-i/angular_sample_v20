@@ -1,2 +1,2 @@
-export type RequestStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type RequestStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'initialized';
 

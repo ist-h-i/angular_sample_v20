@@ -254,7 +254,9 @@ export class RequestFacade {
   }
 
   private isPendingStatus(status: RequestStatus | string | undefined | null): boolean {
-    return typeof status === 'string' && status.toLowerCase() === 'pending';
+    if (typeof status !== 'string') return false;
+    const normalized = status.toLowerCase();
+    return normalized === 'pending' || normalized === 'initialized';
   }
 
   private isCompletedStatus(status: RequestStatus | string | undefined | null): boolean {

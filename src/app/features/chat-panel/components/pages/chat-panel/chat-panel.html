@@ -2,7 +2,7 @@
   <!-- Top bar (fixed height) -->
   <div class="h-10 flex-none flex items-center justify-between px-4">
     <h3 id="chatTitle" class="m-0 text-base font-medium">{{ currentTitle() }}</h3>
-    <div id="chatMeta" class="text-sm text-gray-500">ステータス: —</div>
+    <div id="chatMeta" class="text-sm text-gray-500">ステータス: {{ currentStatus() }}</div>
   </div>
 
   <!-- Chat window (fills remaining space) -->
@@ -39,12 +39,21 @@
       <button id="testButton" class="hidden" (click)="send()">hidden send</button>
 
       <div id="inputHint" class="sr-only">Enterで送信、Shift+Enterで改行します。</div>
-      <div class="flex items-center">
+      <div class="flex flex-col items-end gap-1 text-right">
         <app-primary-button
           [label]="'送信'"
-          [disabled]="!inputValue || !inputValue.trim()"
+          [disabled]="sendDisabled"
           (clicked)="onSendClick()"
         ></app-primary-button>
+        @if (helperMessage) {
+          <p
+            class="m-0 text-xs"
+            [class.text-red-600]="isQueueThresholdReached()"
+            [class.text-gray-500]="!isQueueThresholdReached()"
+          >
+            {{ helperMessage }}
+          </p>
+        }
       </div>
     </form>
   </div>
