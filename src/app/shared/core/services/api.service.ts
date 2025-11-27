@@ -10,6 +10,7 @@ import type { User } from '../models/user.model';
 export interface CreateRequestPayload {
   query_text: string;
   request_history_id?: string | null;
+  ai_model_id?: string | null;
 }
 
 export interface CreateRequestResponse {
@@ -34,12 +35,16 @@ export class ApiService {
   // Toggle to switch between mock and real API per method
   private readonly useMock = true;
 
+  isMockMode(): boolean {
+    return this.useMock;
+  }
+
   private mockRequests: Record<string, RequestSummary> = {
     'req-1001': {
       request_id: 'req-1001',
       title: '調査：Angular v20 Signals のベストプラクティス',
       snippet: 'Signals 導入時に押さえるべきネイティブ API の使いかたや移行パターン...',
-      status: 'completed',
+      status: 'pending',
       last_updated: new Date().toISOString(),
     },
     'req-1002': {
@@ -51,13 +56,44 @@ export class ApiService {
     },
   };
 
+  private readonly mockThinkingProcesses: Record<string, string> = {
+    'req-1001': `Phase 1: Deconstruct the Request
+・Process 1: Identify key terms such as "neural network" and "learns."
+・Process 2: Determine the user's likely knowledge level.
+
+Phase 2: Structure the Explanation
+・Process 3: Outline key concepts like neurons, weights, and backpropagation.
+・Process 4: Formulate a simple analogy (e.g., learning to ride a bike).
+
+`,
+    'req-1002': `Phase 1: Deconstruct the Request
+・Process 1: Review the DX document topics mentioned.
+・Process 2: Note the expected deliverable format.
+
+Phase 2: Structure the Explanation
+・Process 3: Surface the key takeaways and decisions.
+・Process 4: Link to supporting references for clarity.
+
+`,
+    default: `Phase 1: Deconstruct the Request
+・Process 1: Capture the main goals.
+・Process 2: Note any constraints mentioned.
+
+Phase 2: Structure the Explanation
+・Process 3: Provide reasoning steps.
+・Process 4: Offer a concise summary.
+
+`,
+  };
+
   private mockDetails: Record<string, RequestDetail> = {
     'req-1001': {
       request_id: 'req-1001',
       title: '調査：Angular v20 Signals のベストプラクティス',
       query_text: 'Angular v20 Signals の導入時に押さえるべきポイントや移行戦略を整理してください。',
-      status: 'completed',
+      status: 'pending',
       last_updated: new Date().toISOString(),
+      thinking_process: this.mockThinkingProcesses['req-1001'],
       messages: [
         {
           role: 'user',
@@ -93,46 +129,8 @@ export class ApiService {
       query_text: '最新の開発者体験を改善する取り組みを特に注目点と併せてまとめてください。',
       status: 'processing',
       last_updated: new Date().toISOString(),
+      thinking_process: this.mockThinkingProcesses['req-1002'],
     },
-  };
-
-  private readonly mockThinkingStreams: Record<string, string[]> = {
-    'req-1001': [
-      `Phase 1: Deconstruct the Request
-・Process 1: Identify key terms such as "neural network" and "learns."
-・Process 2: Determine the user's likely knowledge level.
-
-`,
-      `Phase 2: Structure the Explanation
-・Process 3: Outline key concepts like neurons, weights, and backpropagation.
-・Process 4: Formulate a simple analogy (e.g., learning to ride a bike).
-
-`,
-    ],
-    'req-1002': [
-      `Phase 1: Deconstruct the Request
-・Process 1: Review the DX document topics mentioned.
-・Process 2: Note the expected deliverable format.
-
-`,
-      `Phase 2: Structure the Explanation
-・Process 3: Surface the key takeaways and decisions.
-・Process 4: Link to supporting references for clarity.
-
-`,
-    ],
-    default: [
-      `Phase 1: Deconstruct the Request
-・Process 1: Capture the main goals.
-・Process 2: Note any constraints mentioned.
-
-`,
-      `Phase 2: Structure the Explanation
-・Process 3: Provide reasoning steps.
-・Process 4: Offer a concise summary.
-
-`,
-    ],
   };
 
   private mockUser: User = {
@@ -147,14 +145,6 @@ export class ApiService {
     if (s === 'pending') return Math.random() > 0.6 ? 'processing' : 'pending';
     if (s === 'processing') return Math.random() > 0.7 ? 'completed' : 'processing';
     return s;
-  }
-
-  private buildMockThinkingChunks(id: string): string[] {
-    const candidate = this.mockThinkingStreams[id];
-    if (candidate && candidate.length > 0) {
-      return candidate;
-    }
-    return this.mockThinkingStreams['default'];
   }
 
   // GET /initial-data
@@ -237,8 +227,7 @@ export class ApiService {
 
   createResultStream(id: string): EventSource | null {
     if (this.useMock) {
-      const chunks = this.buildMockThinkingChunks(id);
-      return new MockResultEventSource(id, chunks) as unknown as EventSource;
+      return null;
     }
     if (typeof EventSource === 'undefined') {
       return null;
@@ -249,10 +238,10 @@ export class ApiService {
   // GET /requests/status — list of lightweight summaries for the current user
   getRequestsStatus(): Observable<RequestSummary[]> {
     if (this.useMock) {
+      const now = new Date().toISOString();
       const next: Record<string, RequestSummary> = {};
       for (const [id, r] of Object.entries(this.mockRequests)) {
-        const status = this.promote(r.status);
-        next[id] = { ...r, status, last_updated: new Date().toISOString() };
+        next[id] = { ...r, last_updated: now };
       }
       this.mockRequests = next;
       return of(Object.values(this.mockRequests));
@@ -313,7 +302,12 @@ export class ApiService {
         // When not found, simulate 404-like response by keeping status as failed
         return of({ request_id: id, status: 'failed', last_updated: new Date().toISOString() });
       }
-      const nextStatus: RequestStatus = this.promote(cur.status);
+      const progressStatus = (status: RequestStatus): RequestStatus => {
+        if (status === 'pending') return 'processing';
+        if (status === 'processing') return 'completed';
+        return status;
+      };
+      const nextStatus: RequestStatus = progressStatus(cur.status);
       const updated = { ...cur, status: nextStatus, last_updated: new Date().toISOString() };
       this.mockRequests[id] = updated;
       const detail = this.mockDetails[id];
@@ -350,68 +344,5 @@ export class ApiService {
       return of(Object.values(this.mockRequests));
     }
     return this.http.get<RequestSummary[]>('/request');
-  }
-}
-class MockResultEventSource extends EventTarget {
-  readonly url: string;
-  readonly withCredentials = false;
-  private _readyState: number = EventSource.CONNECTING;
-  get readyState(): number {
-    return this._readyState;
-  }
-  onopen: ((this: EventSource, ev: Event) => any) | null = null;
-  onmessage: ((this: EventSource, ev: MessageEvent<any>) => any) | null = null;
-  onerror: ((this: EventSource, ev: Event) => any) | null = null;
-
-  private timerId: ReturnType<typeof setTimeout> | null = null;
-
-  constructor(private readonly requestId: string, private readonly payloads: string[]) {
-    super();
-    this.url = `/requests/${encodeURIComponent(requestId)}/result`;
-    this.scheduleOpen();
-  }
-
-  close(): void {
-    this.clearTimer();
-    this._readyState = EventSource.CLOSED;
-  }
-
-  private scheduleOpen(): void {
-    this.timerId = setTimeout(() => {
-      this._readyState = EventSource.OPEN;
-      const openEvent = new Event('open');
-      this.dispatchEvent(openEvent);
-      if (typeof this.onopen === 'function') {
-        this.onopen.call(this as unknown as EventSource, openEvent);
-      }
-      this.emitChunk(0);
-    }, 220);
-  }
-
-  private emitChunk(index: number): void {
-    if (this.readyState === EventSource.CLOSED) return;
-    if (index >= this.payloads.length) {
-      this.sendMessage('[DONE]');
-      this._readyState = EventSource.CLOSED;
-      return;
-    }
-    const chunk = this.payloads[index];
-    this.sendMessage(chunk);
-    this.timerId = setTimeout(() => this.emitChunk(index + 1), 420);
-  }
-
-  private sendMessage(payload: string): void {
-    const message = new MessageEvent('message', { data: payload });
-    this.dispatchEvent(message);
-    if (typeof this.onmessage === 'function') {
-      this.onmessage.call(this as unknown as EventSource, message);
-    }
-  }
-
-  private clearTimer(): void {
-    if (this.timerId) {
-      clearTimeout(this.timerId);
-      this.timerId = null;
-    }
   }
 }

@@ -5,6 +5,7 @@ import type { RequestStatus } from '../../../../../shared/core/models/request-st
 import type {
   RequestStatusResponse,
   CreateRequestResponse,
+  CreateRequestPayload,
 } from '../../../../../shared/core/services/api.service';
 import { ApiService } from '../../../../../shared/core/services/api.service';
 import { InitialDataStore } from '../../../../../shared/core/stores/initial-data.store';
@@ -99,10 +100,15 @@ export class RequestFacade {
     this._requests.set(next);
   }
 
-  async submitRequest(queryText: string, requestHistoryId: string | null): Promise<CreateRequestResponse> {
-    const payload = {
+  async submitRequest(
+    queryText: string,
+    requestHistoryId: string | null,
+    aiModelId: string | null = null,
+  ): Promise<CreateRequestResponse> {
+    const payload: CreateRequestPayload = {
       query_text: queryText,
       request_history_id: requestHistoryId,
+      ai_model_id: aiModelId ?? undefined,
     };
     const response = await firstValueFrom(this.api.createRequest(payload));
     if (requestHistoryId) {
@@ -254,7 +260,9 @@ export class RequestFacade {
   }
 
   private isPendingStatus(status: RequestStatus | string | undefined | null): boolean {
-    return typeof status === 'string' && status.toLowerCase() === 'pending';
+    if (typeof status !== 'string') return false;
+    const normalized = status.toLowerCase();
+    return normalized === 'pending' || normalized === 'processing';
   }
 
   private isCompletedStatus(status: RequestStatus | string | undefined | null): boolean {

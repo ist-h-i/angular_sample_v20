@@ -18,7 +18,7 @@ interface ThoughtPhase {
   steps: string[];
 }
 
-interface ThinkingProcessState {
+export interface ThinkingProcessState {
   raw: string;
   phases: ThoughtPhase[];
   isStreaming: boolean;
@@ -125,6 +125,13 @@ export class SelectedRequestStore {
     try {
       const detail = await firstValueFrom(this.api.getRequestById(id));
       this._detail.set(detail ?? null);
+      this.applyThinkingProcessSnapshot(detail ?? null);
+      if (detail && !this.api.isMockMode()) {
+        const status = typeof detail.status === 'string' ? detail.status.toLowerCase() : '';
+        if (status === 'processing' || status === 'completed') {
+          this.startResultStream(detail.request_id);
+        }
+      }
     } catch (err) {
       this._error.set(err);
       this._detail.set(null);
@@ -229,6 +236,29 @@ export class SelectedRequestStore {
       }
     }
     return undefined;
+  }
+
+  private applyThinkingProcessSnapshot(detail: RequestDetail | null): void {
+    if (!detail) return;
+    const id = detail.request_id;
+    if (!id) return;
+    const text = (detail.thinking_process ?? '').trim();
+    const current = this._thinkingState();
+    if (!text) {
+      if (current[id]) {
+        const { [id]: _removed, ...rest } = current;
+        this._thinkingState.set(rest);
+      }
+      return;
+    }
+    this._thinkingState.set({
+      ...current,
+      [id]: {
+        raw: text,
+        phases: this.parseThinkingPhases(text),
+        isStreaming: false,
+      },
+    });
   }
 
   private initializeThinkingStateForStream(id: string): void {

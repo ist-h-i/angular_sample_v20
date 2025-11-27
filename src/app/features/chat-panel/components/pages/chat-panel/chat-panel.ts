@@ -1,8 +1,21 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, NgZone, computed, effect, inject } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  ViewChild,
+  AfterViewInit,
+  NgZone,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { PrimaryButton } from '../../../../../shared/ui/primary-button/primary-button';
 import { Chat } from '../../ui/chat/chat';
 import type { Message } from '../../../../../shared/core/models/message.model';
-import { SelectedRequestStore } from '../../../../../shared/core/stores/selected-request.store';
+import {
+  SelectedRequestStore,
+  ThinkingProcessState,
+} from '../../../../../shared/core/stores/selected-request.store';
 import { RequestFacade } from '../../../../request-queue/components/pages/request-queue/request.facade';
 import { AiModelSelectionStore } from '../../../../../shared/core/stores/ai-model-selection.store';
 
@@ -17,28 +30,35 @@ export class ChatPanel implements AfterViewInit {
   public readonly selectedStore = inject(SelectedRequestStore);
   private readonly requestFacade = inject(RequestFacade);
   private readonly aiModelSelectionStore = inject(AiModelSelectionStore);
-  public manualThinkingPanelOpen = false;
   constructor(private readonly ngZone: NgZone) {
     // Sync messages when selected request detail changes
     effect(() => {
       const detail = this.selectedStore.detail();
-      this.messages = detail?.messages ?? [];
-    });
-    effect(() => {
-      const thinking = this.selectedStore.thinkingProcess();
-      if (!thinking || thinking.isStreaming) {
-        this.manualThinkingPanelOpen = false;
+      const nextMessages = detail?.messages ?? [];
+      const apply = () => this.messages.set(nextMessages);
+      if (typeof queueMicrotask === 'function') {
+        queueMicrotask(apply);
+      } else {
+        Promise.resolve().then(apply);
       }
     });
   }
 
-  public messages: Message[] = [];
+  public readonly messages = signal<Message[]>([]);
   public draft = '';
   public inputValue = '';
 
   // Header bindings
   readonly currentTitle = computed(() => this.selectedStore.detail()?.title ?? 'リクエストを選択してください');
   readonly currentStatus = computed(() => this.selectedStore.detail()?.status ?? '-');
+  readonly finalThinkingProcess = computed<ThinkingProcessState | null>(() => {
+    const process = this.selectedStore.thinkingProcess();
+    if (!process || process.isStreaming) return null;
+    if (!process.raw?.trim() && !(process.phases?.length ?? 0)) {
+      return null;
+    }
+    return process;
+  });
 
   @ViewChild('userInput', { read: ElementRef, static: true })
   userInputRef!: ElementRef<HTMLTextAreaElement>;
@@ -74,40 +94,6 @@ export class ChatPanel implements AfterViewInit {
     this.trySend();
   }
 
-  public toggleThinkingPanel(): void {
-    this.manualThinkingPanelOpen = !this.manualThinkingPanelOpen;
-  }
-
-  public shouldShowThinkingPanel(): boolean {
-    const thinking = this.selectedStore.thinkingProcess();
-    return Boolean(thinking?.raw && (thinking.isStreaming || this.manualThinkingPanelOpen));
-  }
-
-  public isStreamingThinking(): boolean {
-    return Boolean(this.selectedStore.thinkingProcess()?.isStreaming);
-  }
-
-  public shouldLimitThinkingPanelHeight(): boolean {
-    const thinking = this.selectedStore.thinkingProcess();
-    return Boolean(thinking?.isStreaming && !this.manualThinkingPanelOpen);
-  }
-
-  public thinkingToggleIcon(): string {
-    return this.manualThinkingPanelOpen ? '▲' : '▼';
-  }
-
-  public thinkingPhases(): Array<{ title: string; steps: string[] }> {
-    return this.selectedStore.thinkingProcess()?.phases ?? [];
-  }
-
-  public hasThinkingPhases(): boolean {
-    return this.thinkingPhases().length > 0;
-  }
-
-  public thinkingRaw(): string {
-    return this.selectedStore.thinkingProcess()?.raw ?? '';
-  }
-
   private trySend(): void {
     const text = (this.userInputRef?.nativeElement?.value || '').trim();
     if (!text) return;
@@ -128,7 +114,7 @@ export class ChatPanel implements AfterViewInit {
       content: message,
       timestamp: new Date().toISOString(),
     };
-    this.messages = [...this.messages, newMsg];
+    this.messages.update((existing) => [...existing, newMsg]);
 
     const historyId = this.selectedStore.selectedId() ?? null;
     const aiModelId = this.aiModelSelectionStore.selectedModelId();
