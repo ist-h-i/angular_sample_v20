@@ -21,6 +21,7 @@
           <app-request
             [request]="r"
             [selectedRequestId]="selectedRequestId()"
+            [isNew]="highlightedRequestId() === r.request_id"
             (selectRequest)="onSelectRequest($event)"
           ></app-request>
         </li>

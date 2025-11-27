@@ -9,10 +9,18 @@
   outline-offset: 2px;
 }
 
+.rq-card-inner.is-new {
+  animation: rqNewHighlight 900ms ease-in-out 1;
+}
+
 .rq-status {
   box-shadow: var(--inset-highlight, inset 0 1px 0 rgba(255,255,255,0.4));
   background-clip: padding-box;
   text-transform: capitalize;
+}
+
+.rq-status.is-new {
+  animation: rqStatusPulse 900ms ease-in-out 1;
 }
 
 /* State visuals */
@@ -45,6 +53,33 @@
   );
   color: var(--danger-600, #b91c1c);
   border: 1px solid var(--danger-border, #ef444440);
+}
+
+@keyframes rqNewHighlight {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.12);
+  }
+  50% {
+    transform: scale(1.01);
+    box-shadow: 0 14px 30px rgba(59, 130, 246, 0.16);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.12);
+  }
+}
+
+@keyframes rqStatusPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @media (max-width: 640px) {
