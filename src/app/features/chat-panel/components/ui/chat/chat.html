@@ -48,11 +48,15 @@
             [class.justify-end]="m.role === 'user'"
           >
             <article
-              [attr.aria-label]="'Message: ' + m.content"
+              [attr.aria-label]="(m.role === 'reasoning' ? 'Reasoning' : 'Message') + ': ' + m.content"
               class="message inline-block max-w-[78%] break-words p-3 rounded-[12px] shadow-sm transition-transform duration-200 ease-out transform"
               [class.bubble--user]="m.role === 'user'"
-              [class.bubble--assistant]="m.role !== 'user'"
+              [class.bubble--assistant]="m.role === 'assistant'"
+              [class.bubble--reasoning]="m.role === 'reasoning'"
             >
+              @if (m.role === 'reasoning') {
+                <div class="message__label">Reasoning</div>
+              }
               <div class="text-sm whitespace-pre-wrap">{{ m.content }}</div>
             </article>
           </div>

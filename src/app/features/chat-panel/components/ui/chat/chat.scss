@@ -24,6 +24,22 @@
   align-self: flex-start;
 }
 
+.bubble--reasoning {
+  color: var(--muted-text);
+  background: var(--panel);
+  border: 1px dashed var(--panel-border);
+  align-self: flex-start;
+}
+
+.message__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-text);
+  margin-bottom: 4px;
+}
+
 .message-row {
   display: flex;
   align-items: flex-start;

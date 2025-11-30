@@ -20,7 +20,7 @@ export class Chat implements OnChanges {
   }
 
   shouldShowProcessFor(index: number, role: Message['role']): boolean {
-    if (role === 'user') return false;
+    if (role !== 'assistant') return false;
     const process = this.finalThinkingProcess;
     if (!process || process.isStreaming) return false;
     return index === this.findLastAssistantIndex();
@@ -44,7 +44,7 @@ export class Chat implements OnChanges {
 
   private findLastAssistantIndex(): number {
     for (let i = this.messages.length - 1; i >= 0; i--) {
-      if (this.messages[i]?.role && this.messages[i]?.role !== 'user') {
+      if (this.messages[i]?.role === 'assistant') {
         return i;
       }
     }
