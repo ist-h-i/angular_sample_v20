@@ -16,5 +16,9 @@ export interface Message {
    * Additional metadata that may accompany reasoning responses.
    */
   metadata?: Record<string, unknown>;
+  /**
+   * Grouped reasoning children that belong to this assistant message.
+   */
+  reasoningChildren?: Message[];
 }
 

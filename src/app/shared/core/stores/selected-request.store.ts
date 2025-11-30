@@ -124,8 +124,11 @@ export class SelectedRequestStore {
     this._error.set(null);
     try {
       const detail = await firstValueFrom(this.api.getRequestById(id));
-      this._detail.set(detail ?? null);
-      this.applyThinkingProcessSnapshot(detail ?? null);
+      const normalized = detail
+        ? { ...detail, messages: this.normalizeMessages(detail.messages ?? []) }
+        : null;
+      this._detail.set(normalized);
+      this.applyThinkingProcessSnapshot(normalized);
       if (detail && !this.api.isMockMode()) {
         const status = typeof detail.status === 'string' ? detail.status.toLowerCase() : '';
         if (status === 'processing' || status === 'completed') {
@@ -187,6 +190,32 @@ export class SelectedRequestStore {
       timestamp: existing?.timestamp ?? new Date().toISOString(),
     };
     this._detail.set({ ...detail, messages: updated });
+  }
+
+  private normalizeMessages(messages: Message[] | null | undefined): Message[] {
+    if (!messages || !messages.length) return [];
+    const result: Message[] = [];
+    let pendingReasoning: Message[] = [];
+
+    for (const message of messages) {
+      if (!message) continue;
+      if (message.role === 'reasoning') {
+        pendingReasoning = [...pendingReasoning, message];
+        continue;
+      }
+      if (message.role === 'assistant') {
+        const reasoningChildren = pendingReasoning.length ? [...pendingReasoning] : undefined;
+        const assistantMessage: Message = reasoningChildren
+          ? { ...message, reasoningChildren }
+          : message;
+        result.push(assistantMessage);
+        pendingReasoning = [];
+        continue;
+      }
+      result.push(message);
+    }
+
+    return result;
   }
 
   private parseSsePayload(raw: string): unknown {
