@@ -4,6 +4,8 @@ import { Chat } from '../../ui/chat/chat';
 import type { Message } from '../../../../../shared/core/models/message.model';
 import { SelectedRequestStore } from '../../../../../shared/core/stores/selected-request.store';
 import { RequestFacade } from '../../../../request-queue/components/pages/request-queue/request.facade';
+import type { RequestStatus } from '../../../../../shared/core/models/request-status.model';
+import type { RequestSummary } from '../../../../../shared/core/models/request-summary.model';
 
 @Component({
   selector: 'app-chat-panel',
@@ -30,6 +32,18 @@ export class ChatPanel implements AfterViewInit {
   // Header bindings
   readonly currentTitle = computed(() => this.selectedStore.detail()?.title ?? 'リクエストを選択してください');
   readonly currentStatus = computed(() => this.selectedStore.detail()?.status ?? '-');
+
+  // Pending/initialized guard: queue level & current detail level
+  private readonly pendingLikeCount = computed(() => {
+    const snapshot = this.requestFacade.requests ? this.requestFacade.requests() : {};
+    const values = Object.values(snapshot ?? {}) as RequestSummary[];
+    return values.filter((r) => this.isPendingLike(r?.status)).length;
+  });
+
+  readonly isQueueThresholdReached = computed(() => this.pendingLikeCount() >= 3);
+  readonly isCurrentRequestPendingLike = computed(() =>
+    this.isPendingLike(this.selectedStore.detail()?.status),
+  );
 
   @ViewChild('userInput', { read: ElementRef, static: true })
   userInputRef!: ElementRef<HTMLTextAreaElement>;
@@ -63,6 +77,23 @@ export class ChatPanel implements AfterViewInit {
 
   public send(): void {
     this.trySend();
+  }
+
+  get sendDisabled(): boolean {
+    if (!this.inputValue || !this.inputValue.trim()) return true;
+    if (this.isQueueThresholdReached()) return true;
+    if (this.isCurrentRequestPendingLike()) return true;
+    return false;
+  }
+
+  get helperMessage(): string {
+    if (this.isQueueThresholdReached()) {
+      return 'ペンディングまたはイニシャライズドのリクエストが3件以上のため、新規送信できません。';
+    }
+    if (this.isCurrentRequestPendingLike()) {
+      return '処理中です。お待ち下さい。';
+    }
+    return '';
   }
 
   private trySend(): void {
@@ -123,6 +154,12 @@ export class ChatPanel implements AfterViewInit {
     if (this.userInputRef?.nativeElement) {
       this.userInputRef.nativeElement.focus();
     }
+  }
+
+  private isPendingLike(status: RequestStatus | string | null | undefined): boolean {
+    if (typeof status !== 'string') return false;
+    const normalized = status.toLowerCase();
+    return normalized === 'pending' || normalized === 'initialized';
   }
 
   private resizeTextarea(): void {
