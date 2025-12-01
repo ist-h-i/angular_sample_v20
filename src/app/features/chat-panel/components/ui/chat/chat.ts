@@ -11,9 +11,13 @@ import type { ThinkingProcessState } from '../../../../../shared/core/stores/sel
 export class Chat implements OnChanges {
   @Input() messages: Message[] = [];
   @Input() finalThinkingProcess: ThinkingProcessState | null = null;
+  groupedMessages: { items: Message[]; anchor: Message; anchorIndex: number }[] = [];
   private finalProcessExpanded = false;
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['messages']) {
+      this.groupedMessages = this.buildGroupedMessages();
+    }
     if (changes['finalThinkingProcess']) {
       this.finalProcessExpanded = false;
     }
@@ -49,5 +53,27 @@ export class Chat implements OnChanges {
       }
     }
     return -1;
+  }
+
+  private buildGroupedMessages(): { items: Message[]; anchor: Message; anchorIndex: number }[] {
+    const groups: { items: Message[]; anchor: Message; anchorIndex: number }[] = [];
+    let pending: Message[] = [];
+
+    this.messages.forEach((message, index) => {
+      if (!message) return;
+      if (this.isChatMessage(message.role)) {
+        const items = [...pending, message];
+        groups.push({ items, anchor: message, anchorIndex: index });
+        pending = [];
+      } else {
+        pending = [...pending, message];
+      }
+    });
+
+    return groups;
+  }
+
+  private isChatMessage(role: Message['role']): boolean {
+    return role === 'assistant' || role === 'user';
   }
 }

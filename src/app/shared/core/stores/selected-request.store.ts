@@ -194,28 +194,7 @@ export class SelectedRequestStore {
 
   private normalizeMessages(messages: Message[] | null | undefined): Message[] {
     if (!messages || !messages.length) return [];
-    const result: Message[] = [];
-    let pendingReasoning: Message[] = [];
-
-    for (const message of messages) {
-      if (!message) continue;
-      if (message.role === 'reasoning') {
-        pendingReasoning = [...pendingReasoning, message];
-        continue;
-      }
-      if (message.role === 'assistant') {
-        const reasoningChildren = pendingReasoning.length ? [...pendingReasoning] : undefined;
-        const assistantMessage: Message = reasoningChildren
-          ? { ...message, reasoningChildren }
-          : message;
-        result.push(assistantMessage);
-        pendingReasoning = [];
-        continue;
-      }
-      result.push(message);
-    }
-
-    return result;
+    return messages.filter((message): message is Message => Boolean(message));
   }
 
   private parseSsePayload(raw: string): unknown {
