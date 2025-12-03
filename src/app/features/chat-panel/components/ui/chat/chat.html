@@ -1,7 +1,7 @@
-﻿@if (messages && messages.length > 0) {
+@if (groupedMessages && groupedMessages.length > 0) {
   <div class="space-y-4">
-    @for (m of messages; track m; let idx = $index) {
-      @if (m.role !== 'user' && shouldShowProcessFor(idx, m.role)) {
+    @for (group of groupedMessages; track group.anchor.timestamp + group.anchorIndex) {
+      @if (group.anchor.role !== 'user' && shouldShowProcessFor(group.anchorIndex, group.anchor.role)) {
         <div class="thinking-inline-row">
           <div class="thinking-inline">
             <div class="thinking-inline__header">
@@ -44,17 +44,25 @@
           <!-- Bubble container -->
           <div
             class="flex"
-            [class.justify-start]="m.role !== 'user'"
-            [class.justify-end]="m.role === 'user'"
+            [class.justify-start]="group.anchor.role !== 'user'"
+            [class.justify-end]="group.anchor.role === 'user'"
           >
-            <article
-              [attr.aria-label]="'Message: ' + m.content"
-              class="message inline-block max-w-[78%] break-words p-3 rounded-[12px] shadow-sm transition-transform duration-200 ease-out transform"
-              [class.bubble--user]="m.role === 'user'"
-              [class.bubble--assistant]="m.role !== 'user'"
-            >
-              <div class="text-sm whitespace-pre-wrap">{{ m.content }}</div>
-            </article>
+            <div class="message-stack" [class.items-end]="group.anchor.role === 'user'" [class.items-start]="group.anchor.role !== 'user'">
+              @for (m of group.items; track m.timestamp + $index) {
+                <article
+                  [attr.aria-label]="(m.role === 'reasoning' ? 'Reasoning' : 'Message') + ': ' + m.content"
+                  class="message inline-block max-w-[78%] break-words p-3 rounded-[12px] shadow-sm transition-transform duration-200 ease-out transform"
+                  [class.bubble--user]="m.role === 'user'"
+                  [class.bubble--assistant]="m.role === 'assistant'"
+                  [class.bubble--reasoning]="m.role === 'reasoning'"
+                >
+                  @if (m.role === 'reasoning') {
+                    <div class="message__label">Reasoning</div>
+                  }
+                  <div class="text-sm whitespace-pre-wrap">{{ m.content }}</div>
+                </article>
+              }
+            </div>
           </div>
         </div>
       </div>

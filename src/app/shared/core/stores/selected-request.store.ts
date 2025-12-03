@@ -124,8 +124,11 @@ export class SelectedRequestStore {
     this._error.set(null);
     try {
       const detail = await firstValueFrom(this.api.getRequestById(id));
-      this._detail.set(detail ?? null);
-      this.applyThinkingProcessSnapshot(detail ?? null);
+      const normalized = detail
+        ? { ...detail, messages: this.normalizeMessages(detail.messages ?? []) }
+        : null;
+      this._detail.set(normalized);
+      this.applyThinkingProcessSnapshot(normalized);
       if (detail && !this.api.isMockMode()) {
         const status = typeof detail.status === 'string' ? detail.status.toLowerCase() : '';
         if (status === 'processing' || status === 'completed') {
@@ -187,6 +190,11 @@ export class SelectedRequestStore {
       timestamp: existing?.timestamp ?? new Date().toISOString(),
     };
     this._detail.set({ ...detail, messages: updated });
+  }
+
+  private normalizeMessages(messages: Message[] | null | undefined): Message[] {
+    if (!messages || !messages.length) return [];
+    return messages.filter((message): message is Message => Boolean(message));
   }
 
   private parseSsePayload(raw: string): unknown {

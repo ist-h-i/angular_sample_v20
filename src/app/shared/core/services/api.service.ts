@@ -102,6 +102,13 @@ Phase 2: Structure the Explanation
           timestamp: new Date().toISOString(),
         },
         {
+          role: 'reasoning',
+          content:
+            'ユーザーのゴールを分解し、移行手順と運用時のリスクを整理しています。Signals への置き換えポイントや計測観点を抽出中です。',
+          timestamp: new Date().toISOString(),
+          metadata: { stage: 'analysis' },
+        },
+        {
           role: 'assistant',
           content:
             '以下のようなステップで Signals を活用すると、初期導入と既存コードの移行がスムーズになります。\n' +
@@ -276,6 +283,12 @@ Phase 2: Structure the Explanation
         detail.messages = [
           { role: 'user', content: base.query_text, timestamp: ts },
           {
+            role: 'reasoning',
+            content: 'リクエストの意図を確認し、要約の構造と参照元を決めています。',
+            timestamp: ts,
+            metadata: { stage: 'planning' },
+          },
+          {
             role: 'assistant',
             content: 'Here is the summarized content with key points and references.',
             timestamp: ts,
@@ -311,18 +324,24 @@ Phase 2: Structure the Explanation
       const updated = { ...cur, status: nextStatus, last_updated: new Date().toISOString() };
       this.mockRequests[id] = updated;
       const detail = this.mockDetails[id];
-      if (detail) {
-        detail.status = nextStatus;
-        detail.last_updated = updated.last_updated;
-        if (nextStatus === 'completed' && !detail.messages) {
-          const ts = new Date().toISOString();
-          detail.messages = [
-            { role: 'user', content: detail.query_text, timestamp: ts },
-            {
-              role: 'assistant',
-              content: 'This is a final generated response for your request.',
-              timestamp: ts,
-              annotations: [
+        if (detail) {
+          detail.status = nextStatus;
+          detail.last_updated = updated.last_updated;
+          if (nextStatus === 'completed' && !detail.messages) {
+            const ts = new Date().toISOString();
+            detail.messages = [
+              { role: 'user', content: detail.query_text, timestamp: ts },
+              {
+                role: 'reasoning',
+                content: '回答のアウトラインを整理し、参照する情報源を確定しています。',
+                timestamp: ts,
+                metadata: { stage: 'drafting' },
+              },
+              {
+                role: 'assistant',
+                content: 'This is a final generated response for your request.',
+                timestamp: ts,
+                annotations: [
                 {
                   url: 'https://example.com/article',
                   title: 'Example Article',
