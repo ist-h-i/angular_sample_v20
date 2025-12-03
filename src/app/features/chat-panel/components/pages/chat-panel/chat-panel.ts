@@ -7,9 +7,9 @@ import {
   computed,
   effect,
   inject,
+  HostListener,
   signal,
 } from '@angular/core';
-import { PrimaryButton } from '../../../../../shared/ui/primary-button/primary-button';
 import { Chat } from '../../ui/chat/chat';
 import type { Message } from '../../../../../shared/core/models/message.model';
 import {
@@ -22,7 +22,7 @@ import { AiModelSelectionStore } from '../../../../../shared/core/stores/ai-mode
 @Component({
   selector: 'app-chat-panel',
   standalone: true,
-  imports: [PrimaryButton, Chat],
+  imports: [Chat],
   templateUrl: './chat-panel.html',
   styleUrl: './chat-panel.scss',
 })
@@ -47,6 +47,13 @@ export class ChatPanel implements AfterViewInit {
   public readonly messages = signal<Message[]>([]);
   public draft = '';
   public inputValue = '';
+  public selectedModel = 'gpt-4';
+  public modelDropdownOpen = false;
+  readonly modelOptions = [
+    { label: 'GPT-4', value: 'gpt-4' },
+    { label: 'GPT-3.5', value: 'gpt-3.5' },
+    { label: 'Gemini', value: 'gemini' },
+  ];
 
   // Header bindings
   readonly currentTitle = computed(() => this.selectedStore.detail()?.title ?? 'リクエストを選択してください');
@@ -62,6 +69,8 @@ export class ChatPanel implements AfterViewInit {
 
   @ViewChild('userInput', { read: ElementRef, static: true })
   userInputRef!: ElementRef<HTMLTextAreaElement>;
+  @ViewChild('modelShell', { read: ElementRef, static: true })
+  modelShellRef!: ElementRef<HTMLDivElement>;
 
   ngAfterViewInit(): void {
     // Initial resize after view init
@@ -88,6 +97,44 @@ export class ChatPanel implements AfterViewInit {
 
   onSendClick(): void {
     this.trySend();
+  }
+
+  toggleModelDropdown(): void {
+    this.modelDropdownOpen = !this.modelDropdownOpen;
+  }
+
+  selectModel(value: string): void {
+    this.selectedModel = value;
+    this.modelDropdownOpen = false;
+  }
+
+  onModelTriggerKeydown(event: KeyboardEvent): void {
+    if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.modelDropdownOpen = true;
+      return;
+    }
+    if (event.key === 'Escape') {
+      this.modelDropdownOpen = false;
+    }
+  }
+
+  onModelOptionKeydown(event: KeyboardEvent, value: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.selectModel(value);
+    }
+  }
+
+  get selectedModelLabel(): string {
+    return this.modelOptions.find((option) => option.value === this.selectedModel)?.label ?? this.selectedModel;
+  }
+
+  @HostListener('document:click', ['$event'])
+  handleClickOutside(event: MouseEvent): void {
+    if (!this.modelDropdownOpen) return;
+    if (this.modelShellRef?.nativeElement.contains(event.target as Node)) return;
+    this.modelDropdownOpen = false;
   }
 
   public send(): void {
