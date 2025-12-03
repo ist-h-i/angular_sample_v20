@@ -9,5 +9,6 @@ export interface RequestDetail {
   last_updated: string; // ISO 8601 (UTC, with Z)
   messages?: Message[];
   status_detail?: string;
+  thinking_process?: string;
 }
 

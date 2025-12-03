@@ -1,0 +1,52 @@
+@if (hasThinkingContent()) {
+  <div
+    class="thinking-panel"
+    [class.thinking-panel--streaming]="isStreamingThinking()"
+  >
+    <div class="thinking-panel__header">
+      <div class="thinking-panel__label">
+        <span class="thinking-panel__icon" aria-hidden="true">💡</span>
+        <div class="thinking-panel__title-block">
+          <span class="thinking-panel__title">Thought Process</span>
+          @if (isStreamingThinking()) {
+            <span class="thinking-panel__status">Streaming…</span>
+          }
+        </div>
+      </div>
+      <button
+        type="button"
+        class="thinking-panel__toggle"
+        (click)="toggleThinkingPanel()"
+        [disabled]="isStreamingThinking()"
+        [attr.aria-expanded]="isThinkingExpanded()"
+        aria-label="Toggle thinking panel"
+      >
+        {{ thinkingToggleIcon() }}
+      </button>
+    </div>
+
+    @if (isThinkingExpanded()) {
+      <div
+        class="thinking-panel__content"
+        [class.thinking-panel__content--streaming]="shouldLimitThinkingPanelHeight()"
+      >
+        @if (hasThinkingPhases()) {
+          <div class="thinking-panel__phase-block">
+            @for (phase of thinkingPhases(); track $index) {
+              <div class="thinking-panel__phase">
+                <div class="thinking-panel__phase-title">{{ phase.title }}</div>
+                <ul class="thinking-panel__phase-steps">
+                  @for (step of phase.steps; track $index) {
+                    <li>{{ step }}</li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        } @else {
+          <pre class="thinking-panel__raw">{{ thinkingRaw() }}</pre>
+        }
+      </div>
+    }
+  </div>
+}

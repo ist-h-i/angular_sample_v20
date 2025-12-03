@@ -10,6 +10,7 @@ import type { User } from '../models/user.model';
 export interface CreateRequestPayload {
   query_text: string;
   request_history_id?: string | null;
+  ai_model_id?: string | null;
 }
 
 export interface CreateRequestResponse {
@@ -34,12 +35,16 @@ export class ApiService {
   // Toggle to switch between mock and real API per method
   private readonly useMock = true;
 
+  isMockMode(): boolean {
+    return this.useMock;
+  }
+
   private mockRequests: Record<string, RequestSummary> = {
     'req-1001': {
       request_id: 'req-1001',
       title: '調査：Angular v20 Signals のベストプラクティス',
       snippet: 'Signals 導入時に押さえるべきネイティブ API の使いかたや移行パターン...',
-      status: 'completed',
+      status: 'pending',
       last_updated: new Date().toISOString(),
     },
     'req-1002': {
@@ -51,19 +56,57 @@ export class ApiService {
     },
   };
 
+  private readonly mockThinkingProcesses: Record<string, string> = {
+    'req-1001': `Phase 1: Deconstruct the Request
+・Process 1: Identify key terms such as "neural network" and "learns."
+・Process 2: Determine the user's likely knowledge level.
+
+Phase 2: Structure the Explanation
+・Process 3: Outline key concepts like neurons, weights, and backpropagation.
+・Process 4: Formulate a simple analogy (e.g., learning to ride a bike).
+
+`,
+    'req-1002': `Phase 1: Deconstruct the Request
+・Process 1: Review the DX document topics mentioned.
+・Process 2: Note the expected deliverable format.
+
+Phase 2: Structure the Explanation
+・Process 3: Surface the key takeaways and decisions.
+・Process 4: Link to supporting references for clarity.
+
+`,
+    default: `Phase 1: Deconstruct the Request
+・Process 1: Capture the main goals.
+・Process 2: Note any constraints mentioned.
+
+Phase 2: Structure the Explanation
+・Process 3: Provide reasoning steps.
+・Process 4: Offer a concise summary.
+
+`,
+  };
+
   private mockDetails: Record<string, RequestDetail> = {
     'req-1001': {
       request_id: 'req-1001',
       title: '調査：Angular v20 Signals のベストプラクティス',
       query_text: 'Angular v20 Signals の導入時に押さえるべきポイントや移行戦略を整理してください。',
-      status: 'completed',
+      status: 'pending',
       last_updated: new Date().toISOString(),
+      thinking_process: this.mockThinkingProcesses['req-1001'],
       messages: [
         {
           role: 'user',
           content:
             'Angular v20 Signals の導入を検討しているのですが、既存のコンポーネントやサービスをどうやって移行すればよいか、加えて運用時に気をつけることを知りたいです。',
           timestamp: new Date().toISOString(),
+        },
+        {
+          role: 'reasoning',
+          content:
+            'ユーザーのゴールを分解し、移行手順と運用時のリスクを整理しています。Signals への置き換えポイントや計測観点を抽出中です。',
+          timestamp: new Date().toISOString(),
+          metadata: { stage: 'analysis' },
         },
         {
           role: 'assistant',
@@ -93,6 +136,7 @@ export class ApiService {
       query_text: '最新の開発者体験を改善する取り組みを特に注目点と併せてまとめてください。',
       status: 'processing',
       last_updated: new Date().toISOString(),
+      thinking_process: this.mockThinkingProcesses['req-1002'],
     },
   };
 
@@ -188,13 +232,23 @@ export class ApiService {
     return this.http.post<CreateRequestResponse>('/requests', payload);
   }
 
+  createResultStream(id: string): EventSource | null {
+    if (this.useMock) {
+      return null;
+    }
+    if (typeof EventSource === 'undefined') {
+      return null;
+    }
+    return new EventSource(`/requests/${encodeURIComponent(id)}/result`);
+  }
+
   // GET /requests/status — list of lightweight summaries for the current user
   getRequestsStatus(): Observable<RequestSummary[]> {
     if (this.useMock) {
+      const now = new Date().toISOString();
       const next: Record<string, RequestSummary> = {};
       for (const [id, r] of Object.entries(this.mockRequests)) {
-        const status = this.promote(r.status);
-        next[id] = { ...r, status, last_updated: new Date().toISOString() };
+        next[id] = { ...r, last_updated: now };
       }
       this.mockRequests = next;
       return of(Object.values(this.mockRequests));
@@ -229,6 +283,12 @@ export class ApiService {
         detail.messages = [
           { role: 'user', content: base.query_text, timestamp: ts },
           {
+            role: 'reasoning',
+            content: 'リクエストの意図を確認し、要約の構造と参照元を決めています。',
+            timestamp: ts,
+            metadata: { stage: 'planning' },
+          },
+          {
             role: 'assistant',
             content: 'Here is the summarized content with key points and references.',
             timestamp: ts,
@@ -255,22 +315,33 @@ export class ApiService {
         // When not found, simulate 404-like response by keeping status as failed
         return of({ request_id: id, status: 'failed', last_updated: new Date().toISOString() });
       }
-      const nextStatus: RequestStatus = this.promote(cur.status);
+      const progressStatus = (status: RequestStatus): RequestStatus => {
+        if (status === 'pending') return 'processing';
+        if (status === 'processing') return 'completed';
+        return status;
+      };
+      const nextStatus: RequestStatus = progressStatus(cur.status);
       const updated = { ...cur, status: nextStatus, last_updated: new Date().toISOString() };
       this.mockRequests[id] = updated;
       const detail = this.mockDetails[id];
-      if (detail) {
-        detail.status = nextStatus;
-        detail.last_updated = updated.last_updated;
-        if (nextStatus === 'completed' && !detail.messages) {
-          const ts = new Date().toISOString();
-          detail.messages = [
-            { role: 'user', content: detail.query_text, timestamp: ts },
-            {
-              role: 'assistant',
-              content: 'This is a final generated response for your request.',
-              timestamp: ts,
-              annotations: [
+        if (detail) {
+          detail.status = nextStatus;
+          detail.last_updated = updated.last_updated;
+          if (nextStatus === 'completed' && !detail.messages) {
+            const ts = new Date().toISOString();
+            detail.messages = [
+              { role: 'user', content: detail.query_text, timestamp: ts },
+              {
+                role: 'reasoning',
+                content: '回答のアウトラインを整理し、参照する情報源を確定しています。',
+                timestamp: ts,
+                metadata: { stage: 'drafting' },
+              },
+              {
+                role: 'assistant',
+                content: 'This is a final generated response for your request.',
+                timestamp: ts,
+                annotations: [
                 {
                   url: 'https://example.com/article',
                   title: 'Example Article',
