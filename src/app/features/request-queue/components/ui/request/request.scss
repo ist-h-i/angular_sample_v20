@@ -46,6 +46,11 @@
   text-transform: capitalize;
   position: relative;
   isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: fit-content;
 }
 
 /* State visuals */
@@ -122,6 +127,15 @@
   .rq-status.pending::after,
   .rq-status.processing::after {
     animation: none;
-    background: none;
+    background: linear-gradient(
+      120deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.25) 40%,
+      rgba(255, 255, 255, 0.35) 50%,
+      rgba(255, 255, 255, 0.2) 60%,
+      transparent 100%
+    );
+    background-position: 0 0;
+    background-size: 200% 100%;
   }
 }

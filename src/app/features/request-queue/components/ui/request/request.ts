@@ -26,6 +26,21 @@ export class Request {
     return this.request?.status ?? null;
   }
 
+  get statusText(): string {
+    switch (this.status) {
+      case 'pending':
+        return 'Pending';
+      case 'processing':
+        return 'Processing';
+      case 'completed':
+        return 'Completed';
+      case 'failed':
+        return 'Failed';
+      default:
+        return '';
+    }
+  }
+
   // CSS class for status pill
   get statusPillClass(): string {
     const status = this.status ?? '';
@@ -40,12 +55,12 @@ export class Request {
     return this.status === 'pending' || this.status === 'processing';
   }
 
-  get statusLive(): 'polite' | null {
-    return this.status ? 'polite' : null;
+  get statusLive(): 'polite' {
+    return 'polite';
   }
 
   get statusLabel(): string | null {
-    return this.status ? `ステータス: ${this.status}` : null;
+    return this.status ? `Status: ${this.statusText}` : null;
   }
 
   onClick(): void {
