@@ -59,6 +59,7 @@
 html,
 body {
   height: 100%;
+  overflow: hidden; /* keep scrolling inside panels, not on body */
 }
 
 body {
@@ -66,6 +67,12 @@ body {
   color: var(--text);
   font-family: "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
   margin: 0;
+}
+
+app-root {
+  height: 100%;
+  min-height: 100vh;
+  display: block;
 }
 
 /* Panel */
