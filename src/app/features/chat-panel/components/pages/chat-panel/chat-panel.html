@@ -14,34 +14,89 @@
   </div>
 
   <!-- Controls (auto height with min height; safe-area + blur backdrop) -->
-  <div class="min-h-[64px] flex-none flex items-end bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-t border-slate-200">
-    <form aria-label="チャット操作" class="flex items-end gap-2 w-full px-2 py-3" (submit)="$event.preventDefault()">
+  <footer class="chat-panel__footer">
+    <form aria-label="チャット操作" class="chat-panel__form" (submit)="$event.preventDefault()">
       <label for="userInput" class="sr-only">メッセージ入力</label>
 
-      <!-- Primary textarea used by the app -->
-      <textarea
-        id="userInput"
-        #userInput
-        placeholder="会話する"
-        aria-describedby="inputHint"
-        aria-controls="chatWindow"
-        class="flex-1 max-h-[500px] min-h-[40px] p-2 text-sm resize-none chat-panel__textarea"
-        (input)="onInput($event)"
-        (keydown)="onKeydown($event)"
-      ></textarea>
+      <div class="chat-panel__input-shell">
+        <textarea
+          id="userInput"
+          #userInput
+          placeholder="会話する"
+          aria-describedby="inputHint"
+          aria-controls="chatWindow"
+          class="chat-panel__textarea"
+          (input)="onInput($event)"
+          (keydown)="onKeydown($event)"
+        ></textarea>
+
+        <div class="chat-panel__input-footer">
+          <div class="chat-panel__model">
+            <label for="modelSelectorTrigger" class="sr-only">Select model</label>
+            <div class="chat-panel__model-shell" #modelShell>
+              @if (modelDropdownOpen) {
+                <ul
+                  id="chatModelList"
+                  class="chat-panel__model-menu"
+                  role="listbox"
+                  aria-label="Available models"
+                >
+                  @for (option of modelOptions; track option.value) {
+                    <li
+                      role="option"
+                      [attr.aria-selected]="selectedModel === option.value"
+                      class="chat-panel__model-option"
+                      (click)="selectModel(option.value)"
+                      tabindex="0"
+                      (keydown)="onModelOptionKeydown($event, option.value)"
+                    >
+                      <span class="chat-panel__model-option-label">{{ option.label }}</span>
+                      @if (selectedModel === option.value) {
+                        <span class="chat-panel__model-option-check" aria-hidden="true">&#10003;</span>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+              <button
+                id="modelSelectorTrigger"
+                type="button"
+                class="chat-panel__model-trigger"
+                aria-haspopup="listbox"
+                [attr.aria-expanded]="modelDropdownOpen"
+                aria-controls="chatModelList"
+                (click)="toggleModelDropdown()"
+                (keydown)="onModelTriggerKeydown($event)"
+              >
+                <span class="chat-panel__model-trigger-label">{{ selectedModelLabel }}</span>
+                <span class="chat-panel__model-chevron" aria-hidden="true"></span>
+              </button>
+
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="chat-panel__send-btn"
+            [disabled]="!inputValue || !inputValue.trim()"
+            (click)="onSendClick()"
+            aria-label="送信"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="chat-panel__send-icon">
+              <path
+                fill="currentColor"
+                d="M3.08 11.347a.75.75 0 0 0 0 1.306l16.5 9.5a.75.75 0 0 0 1.12-.654l.014-7.002a.75.75 0 0 0-.43-.676l-10.04-4.474 10.04-4.474a.75.75 0 0 0 .43-.676L20.7 2.5a.75.75 0 0 0-1.12-.654l-16.5 9.5Z"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
 
       <!-- Hidden native input/button pair to satisfy unit tests that query for input/button -->
       <input type="text" id="testInput" class="hidden" [value]="draft" (input)="draft = ($any($event.target).value)" />
       <button id="testButton" class="hidden" (click)="send()">hidden send</button>
 
       <div id="inputHint" class="sr-only">Enterで送信、Shift+Enterで改行します。</div>
-      <div class="flex items-center">
-        <app-primary-button
-          [label]="'送信'"
-          [disabled]="!inputValue || !inputValue.trim()"
-          (clicked)="onSendClick()"
-        ></app-primary-button>
-      </div>
     </form>
-  </div>
+  </footer>
 </div>
