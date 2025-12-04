@@ -8,6 +8,7 @@ import type {
   CreateRequestPayload,
 } from '../../../../../shared/core/services/api.service';
 import { ApiService } from '../../../../../shared/core/services/api.service';
+import { NotificationService } from '../../../../../shared/core/services/notification.service';
 import { InitialDataStore } from '../../../../../shared/core/stores/initial-data.store';
 import { SelectedRequestStore } from '../../../../../shared/core/stores/selected-request.store';
 import { REQUEST_POLLING_CONFIG } from './request-polling.config';
@@ -42,7 +43,10 @@ export class RequestFacade {
     clearFn(id);
   };
 
-  constructor(private readonly api: ApiService) {
+  constructor(
+    private readonly api: ApiService,
+    private readonly notificationService: NotificationService,
+  ) {
     effect(() => {
       const data = this.initialDataStore.initialData();
       if (!data) return;
@@ -199,6 +203,7 @@ export class RequestFacade {
   ): boolean {
     const current = { ...(this._requests() || {}) };
     const existing = current[id];
+    const previousStatus = existing?.status;
     const status = payload.status;
     const lastUpdated = payload.last_updated ?? payload.updated_at ?? new Date().toISOString();
     current[id] = {
@@ -211,6 +216,16 @@ export class RequestFacade {
     this._requests.set(current);
     if (entry.mode === 'chat' && this.isDisplayedInChatPanel(id) && this.isCompletedStatus(status)) {
       this.selectedStore.startResultStream(id);
+    }
+
+    const transitionedToCompleted =
+      this.isPendingStatus(previousStatus) && this.isCompletedStatus(status);
+    if (transitionedToCompleted) {
+      void this.notificationService.notifyRequestComplete(
+        current[id].title || 'Request completed',
+        id,
+        current[id].snippet,
+      );
     }
 
     if (!this.isPendingStatus(status)) {
