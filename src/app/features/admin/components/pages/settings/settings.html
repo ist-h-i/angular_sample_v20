@@ -1,0 +1,393 @@
+<div class="admin-settings-page px-4 py-6">
+  <div class="mx-auto flex max-w-6xl flex-col gap-4">
+    <header class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Admin Console</p>
+        <h1 class="text-2xl font-semibold text-slate-900">システム管理ページ</h1>
+        <p class="text-sm text-slate-600">
+          管理・サポート担当向け。表レイアウトで情報を詰め込み、誤操作防止のために最小限の操作だけを配置しています。
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="isLoading()">
+          再読込
+        </button>
+        <button type="button" class="btn-primary" (click)="downloadEvents()" [disabled]="isLoading()">
+          イベントZIP取得
+        </button>
+      </div>
+    </header>
+
+    @if (message()) {
+      <div class="note note-success"> {{ message() }} </div>
+    }
+    @if (error()) {
+      <div class="note note-danger">操作に失敗しました。再試行してください。</div>
+    }
+
+    @if (isLoading()) {
+      <div class="note">読み込み中...</div>
+    } @else {
+      <section class="card">
+        <div class="section-header">
+          <div>
+            <p class="section-kicker">Users</p>
+            <h2 class="section-title">ユーザー権限・割当モデル</h2>
+            <p class="section-helper">
+              ユーザーごとの権限、利用モデル、支出上限を一覧で確認できます。CSV（UTF-8/BOMなし）での入出力に対応しています。
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn-secondary" (click)="handleUsersCsvDownload()">
+              CSVダウンロード
+            </button>
+            <label class="btn-secondary cursor-pointer">
+              CSVアップロード
+              <input type="file" accept=".csv,text/csv" class="sr-only" (change)="handleUsersCsvUpload($event)" />
+            </label>
+          </div>
+        </div>
+
+        @if (users().length) {
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>User ID</th>
+                  <th>Active</th>
+                  <th>Admin</th>
+                  <th>Support</th>
+                  <th>AC</th>
+                  <th>Models</th>
+                  <th>Allowed Spend</th>
+                  <th>Updated</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (user of users(); track user.userId) {
+                  <tr>
+                    <td class="font-mono text-sm">{{ user.userId }}</td>
+                    <td>{{ user.active ? '✔' : '―' }}</td>
+                    <td>{{ user.admin ? '✔' : '―' }}</td>
+                    <td>{{ user.support ? '✔' : '―' }}</td>
+                    <td>{{ user.isAc ? '✔' : '―' }}</td>
+                    <td class="font-mono text-xs">{{ user.models.join(', ') || '-' }}</td>
+                    <td class="text-right">{{ user.allowedSpend ?? '-' }}</td>
+                    <td class="text-xs text-slate-500">{{ user.updatedAt ?? '-' }}</td>
+                    <td>
+                      <button type="button" class="btn-link" (click)="editUser(user)">編集</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="text-sm text-slate-600">ユーザーはまだ登録されていません。</p>
+        }
+
+        <div class="form-grid">
+          <div class="form-col">
+            <label class="form-label">User ID</label>
+            <input
+              type="text"
+              class="form-input"
+              [value]="userForm().userId"
+              (input)="updateUserForm('userId', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-col">
+            <label class="form-label">利用モデル (カンマ/パイプ区切り)</label>
+            <input
+              type="text"
+              class="form-input"
+              placeholder="gpt-4o-mini, gpt-4o-8k"
+              [value]="userForm().modelsInput"
+              (input)="updateUserForm('modelsInput', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Allowed Spend</label>
+            <input
+              type="number"
+              class="form-input"
+              [value]="userForm().allowedSpend"
+              (input)="updateUserForm('allowedSpend', $any($event.target).value)"
+            />
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-4">
+          <label class="form-check">
+            <input
+              type="checkbox"
+              [checked]="userForm().isActive"
+              (change)="updateUserForm('isActive', $any($event.target).checked)"
+            />
+            <span>Active</span>
+          </label>
+          <label class="form-check">
+            <input
+              type="checkbox"
+              [checked]="userForm().isAdmin"
+              (change)="updateUserForm('isAdmin', $any($event.target).checked)"
+            />
+            <span>Admin</span>
+          </label>
+          <label class="form-check">
+            <input
+              type="checkbox"
+              [checked]="userForm().isSupport"
+              (change)="updateUserForm('isSupport', $any($event.target).checked)"
+            />
+            <span>Support</span>
+          </label>
+          <label class="form-check">
+            <input
+              type="checkbox"
+              [checked]="userForm().isAc"
+              (change)="updateUserForm('isAc', $any($event.target).checked)"
+            />
+            <span>AC</span>
+          </label>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="isMutating() || !userForm().userId.trim()"
+              (click)="saveUser()"
+            >
+              ユーザー追加/更新
+            </button>
+            <button type="button" class="btn-secondary" (click)="resetUserForm()">入力クリア</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-header">
+          <div>
+            <p class="section-kicker">Models</p>
+            <h2 class="section-title">モデル設定</h2>
+            <p class="section-helper">エンドポイント、推論設定、タイムアウトを一覧とフォームで管理します。</p>
+          </div>
+        </div>
+
+        @if (models().length) {
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Model ID</th>
+                  <th>Endpoint</th>
+                  <th>Reasoning</th>
+                  <th>Verify</th>
+                  <th>Timeout(s)</th>
+                  <th>Updated</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (model of models(); track model.id) {
+                  <tr>
+                    <td class="font-semibold">{{ model.name }}</td>
+                    <td class="font-mono text-xs">{{ model.modelId }}</td>
+                    <td class="font-mono text-xs">{{ model.endpoint }}</td>
+                    <td>{{ model.reasoningEffort || '-' }}</td>
+                    <td>{{ model.isVerify ? '✔' : '―' }}</td>
+                    <td class="text-right">{{ model.timeoutSec ?? '-' }}</td>
+                    <td class="text-xs text-slate-500">{{ model.updatedAt ?? '-' }}</td>
+                    <td class="flex gap-2">
+                      <button type="button" class="btn-link" (click)="editModel(model)">編集</button>
+                      <button type="button" class="btn-link text-red-600" (click)="deleteModel(model.id)">
+                        削除
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="text-sm text-slate-600">モデルがありません。下のフォームから登録してください。</p>
+        }
+
+        <div class="form-grid">
+          <div class="form-col">
+            <label class="form-label">表示名</label>
+            <input
+              type="text"
+              class="form-input"
+              [value]="modelForm().name"
+              (input)="updateModelForm('name', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Model ID</label>
+            <input
+              type="text"
+              class="form-input"
+              [value]="modelForm().modelId"
+              (input)="updateModelForm('modelId', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Endpoint</label>
+            <input
+              type="text"
+              class="form-input"
+              [value]="modelForm().endpoint"
+              (input)="updateModelForm('endpoint', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Reasoning Effort</label>
+            <input
+              type="text"
+              class="form-input"
+              placeholder="low / mid / high"
+              [value]="modelForm().reasoningEffort"
+              (input)="updateModelForm('reasoningEffort', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Timeout (sec)</label>
+            <input
+              type="number"
+              class="form-input"
+              [value]="modelForm().timeoutSec"
+              (input)="updateModelForm('timeoutSec', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-col flex items-center gap-2">
+            <label class="form-check">
+              <input
+                type="checkbox"
+                [checked]="modelForm().isVerify"
+                (change)="updateModelForm('isVerify', $any($event.target).checked)"
+              />
+              <span>検証あり</span>
+            </label>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="isMutating() || !modelForm().name.trim() || !modelForm().modelId.trim() || !modelForm().endpoint.trim()"
+            (click)="saveModel()"
+          >
+            {{ modelForm().id ? 'モデル更新' : 'モデル追加' }}
+          </button>
+          <button type="button" class="btn-secondary" (click)="resetModelForm()">入力クリア</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-header">
+          <div>
+            <p class="section-kicker">Default Models</p>
+            <h2 class="section-title">デフォルトモデル (swarmGroup)</h2>
+            <p class="section-helper">グループごとのモデル優先度や上限をテーブルで確認し、即時編集できます。</p>
+          </div>
+        </div>
+
+        @if (defaultModels().length) {
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Swarm Group</th>
+                  <th>Model IDs</th>
+                  <th>Order</th>
+                  <th>Allowed Spend</th>
+                  <th>Updated</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of defaultModels(); track entry.id) {
+                  <tr>
+                    <td class="font-semibold">{{ entry.swarmGroup }}</td>
+                    <td class="font-mono text-xs">{{ entry.modelIds.join(', ') }}</td>
+                    <td class="text-right">{{ entry.orderNumber }}</td>
+                    <td class="text-right">{{ entry.allowedSpend ?? '-' }}</td>
+                    <td class="text-xs text-slate-500">{{ entry.updatedAt ?? '-' }}</td>
+                    <td class="flex gap-2">
+                      <button type="button" class="btn-link" (click)="editDefaultModel(entry)">編集</button>
+                      <button
+                        type="button"
+                        class="btn-link text-red-600"
+                        (click)="deleteDefaultModel(entry.id)"
+                      >
+                        削除
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="text-sm text-slate-600">デフォルトモデルはまだ登録されていません。</p>
+        }
+
+        <div class="form-grid">
+          <div class="form-col">
+            <label class="form-label">Swarm Group</label>
+            <input
+              type="text"
+              class="form-input"
+              [value]="defaultModelForm().swarmGroup"
+              (input)="updateDefaultModelForm('swarmGroup', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Model IDs (カンマ/パイプ区切り)</label>
+            <input
+              type="text"
+              class="form-input"
+              placeholder="gpt-4o-mini | gpt-4o-8k"
+              [value]="defaultModelForm().modelIdsInput"
+              (input)="updateDefaultModelForm('modelIdsInput', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-col">
+            <label class="form-label">表示順</label>
+            <input
+              type="number"
+              class="form-input"
+              [value]="defaultModelForm().orderNumber"
+              (input)="updateDefaultModelForm('orderNumber', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-col">
+            <label class="form-label">Allowed Spend</label>
+            <input
+              type="number"
+              class="form-input"
+              [value]="defaultModelForm().allowedSpend"
+              (input)="updateDefaultModelForm('allowedSpend', $any($event.target).value)"
+            />
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="isMutating() || !defaultModelForm().swarmGroup.trim()"
+            (click)="saveDefaultModel()"
+          >
+            {{ defaultModelForm().id ? 'デフォルト更新' : 'デフォルト追加' }}
+          </button>
+          <button type="button" class="btn-secondary" (click)="resetDefaultModelForm()">入力クリア</button>
+        </div>
+      </section>
+
+      @if (!hasData()) {
+        <div class="note">データがありません。必要な情報を追加してください。</div>
+      }
+    }
+  </div>
+</div>
