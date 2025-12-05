@@ -26,22 +26,20 @@
           ></app-request>
         </li>
       }
-    } @else {
-      <li class="text-sm text-gray-500">リクエストはありません</li>
-    }
-  </ul>
+    </ul>
 
-  <!-- Actions: fixed to bottom of the viewport -->
-  <div class="flex items-center h-14 px-2 gap-2">
-    <app-primary-button
-      label="新しいリクエスト"
-      id="newRequest"
-      (clicked)="handleNewRequestClick()"
-    ></app-primary-button>
-    <app-secondary-button
-      label="更新"
-      id="refreshBtn"
-      (clicked)="refreshClick()"
-    ></app-secondary-button>
+    <!-- Actions: fixed to bottom of the viewport -->
+    <div class="h-14 px-2 gap-2 flex items-center flex-shrink-0 sticky bottom-0 bg-white">
+      <app-primary-button
+        label="新しいリクエスト"
+        id="newRequest"
+        (clicked)="handleNewRequestClick()"
+      ></app-primary-button>
+      <app-secondary-button
+        label="更新"
+        id="refreshBtn"
+        (clicked)="refreshClick()"
+      ></app-secondary-button>
+    </div>
   </div>
 </div>
