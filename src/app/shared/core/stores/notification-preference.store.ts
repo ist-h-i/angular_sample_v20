@@ -17,10 +17,15 @@ export class NotificationPreferenceStore {
   }
 
   private readPreference(): boolean {
-    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    if (typeof localStorage === 'undefined') {
       return true;
     }
-    const stored = window.localStorage.getItem(NotificationPreferenceStore.STORAGE_KEY);
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(NotificationPreferenceStore.STORAGE_KEY);
+    } catch {
+      return true;
+    }
     if (stored === 'false') {
       return false;
     }
@@ -31,12 +36,16 @@ export class NotificationPreferenceStore {
   }
 
   private writePreference(value: boolean): void {
-    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    if (typeof localStorage === 'undefined') {
       return;
     }
-    window.localStorage.setItem(
-      NotificationPreferenceStore.STORAGE_KEY,
-      value ? 'true' : 'false',
-    );
+    try {
+      localStorage.setItem(
+        NotificationPreferenceStore.STORAGE_KEY,
+        value ? 'true' : 'false',
+      );
+    } catch {
+      // ignore write failures (e.g. storage blocked) to keep app running
+    }
   }
 }
