@@ -13,19 +13,19 @@ export const adminRouteGuard: CanActivateFn = async () => {
   }
 
   const user = initialDataStore.initialData()?.user;
-  const isAdmin = Boolean(user?.is_admin);
+  const isAllowed = Boolean(user?.is_admin || user?.is_support);
 
-  if (!isAdmin) {
+  if (!isAllowed) {
     void router.navigate(['/']);
   }
 
-  return isAdmin;
+  return isAllowed;
 };
 
 export const adminEditingGuard: CanDeactivateFn<Settings> = (component) => {
   if (component?.isEditing?.()) {
     if (typeof window !== 'undefined') {
-      window.alert('編集中です。決定ボタンで保存してから画面を離れてください。');
+      window.alert('編集中の変更があります。離脱すると破棄されます。');
     }
     return false;
   }

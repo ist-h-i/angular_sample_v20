@@ -1,330 +1,313 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { PrimaryButton } from '../../../../../shared/ui/primary-button/primary-button';
-import { SecondaryButton } from '../../../../../shared/ui/secondary-button/secondary-button';
-import { EnvironmentStore } from '../../../../../shared/core/stores/environment.store';
-import { InitialDataStore } from '../../../../../shared/core/stores/initial-data.store';
-import type { EnvironmentVariable } from '../../../../../shared/core/models/environment-variable.model';
+import { AdminStore } from '../../../../../shared/core/stores/admin.store';
+import type {
+  AdminDefaultModel,
+  AdminModel,
+  AdminUserRecord,
+} from '../../../../../shared/core/models/admin.model';
 
-const AI_MODEL_REGEX =
-  /^AI_MODEL_(?<modelId>[A-Z0-9_]+)_(?<field>NAME|CALLS_PER_MINUTE|CALLS_PER_MONTH|REASONING_EFFORT)$/;
-
-const AI_MODEL_FIELD_META = {
-  NAME: {
-    label: 'モデル名',
-    helper: 'OpenAI のモデル名（例: gpt-4o-mini）',
-    inputType: 'text',
-  },
-  CALLS_PER_MINUTE: {
-    label: '分間コール上限',
-    helper: '1 分あたりのリクエスト上限',
-    inputType: 'number',
-  },
-  CALLS_PER_MONTH: {
-    label: '月間コール上限',
-    helper: '1 ヶ月あたりのリクエスト上限',
-    inputType: 'number',
-  },
-  REASONING_EFFORT: {
-    label: 'REASONING_EFFORT',
-    helper: '推論の厳密さ（low/mid/high など）',
-    inputType: 'text',
-  },
-} as const;
-
-type AiModelField = keyof typeof AI_MODEL_FIELD_META;
-
-const AI_MODEL_FIELD_ORDER: AiModelField[] = [
-  'NAME',
-  'CALLS_PER_MINUTE',
-  'CALLS_PER_MONTH',
-  'REASONING_EFFORT',
-];
-
-interface AiModelConfig {
-  id: string;
-  displayName: string;
-  entries: EnvironmentVariable[];
-  fieldEntries: Partial<Record<AiModelField, EnvironmentVariable>>;
+interface UserFormState {
+  userId: string;
+  isActive: boolean;
+  isAdmin: boolean;
+  isSupport: boolean;
+  isAc: boolean;
+  allowedSpend: string;
+  modelsInput: string;
 }
 
-interface NewModelDraft {
-  uid: string;
+interface ModelFormState {
+  id?: string;
+  name: string;
   modelId: string;
-  displayName: string;
-  fields: Partial<Record<AiModelField, string>>;
+  endpoint: string;
+  reasoningEffort: string;
+  isVerify: boolean;
+  timeoutSec: string;
 }
 
-interface GeneralEntryDraft {
-  uid: string;
-  key: string;
-  value: string;
-  description: string;
+interface DefaultModelFormState {
+  id?: string;
+  modelIdsInput: string;
+  swarmGroup: string;
+  orderNumber: string;
+  allowedSpend: string;
 }
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [PrimaryButton, SecondaryButton],
+  imports: [CommonModule],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
 export class Settings implements OnInit {
-  private readonly environmentStore = inject(EnvironmentStore);
-  private readonly initialDataStore = inject(InitialDataStore);
-  private readonly editing = signal(false);
-  private readonly editBuffer = signal<Record<string, string>>({});
-  private readonly removalKeys = signal<Set<string>>(new Set());
-  private readonly modelDraftsSignal = signal<NewModelDraft[]>([]);
-  private readonly generalDraftsSignal = signal<GeneralEntryDraft[]>([]);
+  private readonly adminStore = inject(AdminStore);
 
-  protected readonly entries = computed(() => this.environmentStore.entries());
-  protected readonly aiModelFieldOrder = AI_MODEL_FIELD_ORDER;
-  protected readonly aiModelFieldMeta = AI_MODEL_FIELD_META;
-  protected readonly visibleEntries = computed(() => {
-    const removed = this.removalKeys();
-    return this.entries().filter((entry) => !removed.has(entry.key));
-  });
-  protected readonly aiModelConfigs = computed(() => {
-    const models = new Map<string, AiModelConfig>();
-    for (const entry of this.visibleEntries()) {
-      const match = entry.key.match(AI_MODEL_REGEX);
-      if (!match) continue;
-      const modelId = match.groups?.['modelId'] ?? match[1];
-      const field = (match.groups?.['field'] ?? match[2]) as AiModelField;
-      const existing = models.get(modelId) ?? {
-        id: modelId,
-        displayName: modelId.replace(/_/g, ' '),
-        entries: [],
-        fieldEntries: {},
-      };
-      existing.entries.push(entry);
-      existing.fieldEntries[field] = entry;
-      models.set(modelId, existing);
-    }
-    return Array.from(models.values()).sort((a, b) => a.displayName.localeCompare(b.displayName));
-  });
-  protected readonly aiModelNewDrafts = this.modelDraftsSignal.asReadonly();
-  protected readonly generalDrafts = this.generalDraftsSignal.asReadonly();
-  protected readonly aiModelEntryKeys = computed(() => {
-    const keys = new Set<string>();
-    for (const model of this.aiModelConfigs()) {
-      for (const entry of model.entries) {
-        keys.add(entry.key);
-      }
-    }
-    return keys;
-  });
-  protected readonly generalEntries = computed(() => {
-    const ignored = this.aiModelEntryKeys();
-    return this.visibleEntries().filter((entry) => !ignored.has(entry.key));
-  });
-  protected readonly isLoading = computed(() => this.environmentStore.isLoading());
-  protected readonly isSaving = computed(() => this.environmentStore.isSaving());
-  protected readonly loadError = computed(() => this.environmentStore.error());
-  protected readonly saveError = computed(() => this.environmentStore.saveError());
-  protected readonly userLabel = computed(
-    () => this.initialDataStore.initialData()?.user?.name_full ?? 'ゲストユーザー',
+  protected readonly isLoading = this.adminStore.isLoading;
+  protected readonly isMutating = this.adminStore.isMutating;
+  protected readonly error = this.adminStore.error;
+  protected readonly message = this.adminStore.actionMessage;
+  protected readonly users = this.adminStore.users;
+  protected readonly models = this.adminStore.models;
+  protected readonly defaultModels = this.adminStore.defaultModels;
+  protected readonly hasData = computed(
+    () => !!this.users().length || !!this.models().length || !!this.defaultModels().length,
   );
-  protected readonly hasChanges = computed(() => {
-    if (!this.editing()) return false;
-    if (this.removalKeys().size > 0) return true;
-    if (this.hasModelDrafts()) return true;
-    if (this.hasGeneralDrafts()) return true;
-    const buffer = this.editBuffer();
-    return this.entries().some(
-      (entry) => (buffer[entry.key] ?? entry.value) !== entry.value,
-    );
-  });
+
+  protected readonly userForm = signal<UserFormState>(this.blankUserForm());
+  protected readonly modelForm = signal<ModelFormState>(this.blankModelForm());
+  protected readonly defaultModelForm = signal<DefaultModelFormState>(this.blankDefaultModelForm());
 
   ngOnInit(): void {
-    void this.environmentStore.load();
+    void this.adminStore.load();
   }
 
-  startEditing(): void {
-    const buffer: Record<string, string> = {};
-    for (const entry of this.entries()) {
-      buffer[entry.key] = entry.value;
-    }
-    this.editBuffer.set(buffer);
-    this.editing.set(true);
-    this.removalKeys.set(new Set());
-    this.modelDraftsSignal.set([]);
-    this.generalDraftsSignal.set([]);
+  protected async refresh(): Promise<void> {
+    await this.adminStore.refresh();
   }
 
-  cancelEditing(): void {
-    this.editBuffer.set({});
-    this.editing.set(false);
-    this.removalKeys.set(new Set());
-    this.modelDraftsSignal.set([]);
-    this.generalDraftsSignal.set([]);
+  protected updateUserForm<K extends keyof UserFormState>(key: K, value: UserFormState[K]): void {
+    this.userForm.update((prev) => ({ ...prev, [key]: value }));
   }
 
-  getModelFieldEntry(model: AiModelConfig, field: AiModelField): EnvironmentVariable | undefined {
-    return model.fieldEntries[field];
+  protected updateModelForm<K extends keyof ModelFormState>(key: K, value: ModelFormState[K]): void {
+    this.modelForm.update((prev) => ({ ...prev, [key]: value }));
   }
 
-  getEditValue(entry: EnvironmentVariable): string {
-    return this.editBuffer()[entry.key] ?? entry.value;
+  protected updateDefaultModelForm<K extends keyof DefaultModelFormState>(
+    key: K,
+    value: DefaultModelFormState[K],
+  ): void {
+    this.defaultModelForm.update((prev) => ({ ...prev, [key]: value }));
   }
 
-  handleInput(entry: EnvironmentVariable, event: Event): void {
-    const target = event.target as HTMLTextAreaElement | HTMLInputElement | null;
-    if (!target) return;
-    const updated = { ...this.editBuffer() };
-    updated[entry.key] = target.value;
-    this.editBuffer.set(updated);
-  }
-
-  addModelDraft(): void {
-    const next = [...this.modelDraftsSignal()];
-    next.push({ uid: this.createDraftUid('model'), modelId: '', displayName: '', fields: {} });
-    this.modelDraftsSignal.set(next);
-  }
-
-  removeModelDraft(uid: string): void {
-    const next = this.modelDraftsSignal().filter((draft) => draft.uid !== uid);
-    this.modelDraftsSignal.set(next);
-  }
-
-  updateModelDraftMeta(uid: string, key: 'modelId' | 'displayName', value: string): void {
-    const next = this.modelDraftsSignal().map((draft) =>
-      draft.uid === uid ? { ...draft, [key]: value } : draft,
-    );
-    this.modelDraftsSignal.set(next);
-  }
-
-  updateModelDraftField(uid: string, field: AiModelField, value: string): void {
-    const next = this.modelDraftsSignal().map((draft) => {
-      if (draft.uid !== uid) return draft;
-      return { ...draft, fields: { ...draft.fields, [field]: value } };
-    });
-    this.modelDraftsSignal.set(next);
-  }
-
-  addGeneralDraft(): void {
-    const next = [...this.generalDraftsSignal()];
-    next.push({ uid: this.createDraftUid('env'), key: '', value: '', description: '' });
-    this.generalDraftsSignal.set(next);
-  }
-
-  updateGeneralDraft(uid: string, field: 'key' | 'value' | 'description', value: string): void {
-    const next = this.generalDraftsSignal().map((draft) =>
-      draft.uid === uid ? { ...draft, [field]: value } : draft,
-    );
-    this.generalDraftsSignal.set(next);
-  }
-
-  removeGeneralDraft(uid: string): void {
-    const next = this.generalDraftsSignal().filter((draft) => draft.uid !== uid);
-    this.generalDraftsSignal.set(next);
-  }
-
-  markEntryForRemoval(key: string): void {
-    const next = new Set(this.removalKeys());
-    next.add(key);
-    this.removalKeys.set(next);
-  }
-
-  markModelForRemoval(modelId: string): void {
-    const next = new Set(this.removalKeys());
-    for (const entry of this.entries()) {
-      if (entry.key.startsWith(`AI_MODEL_${modelId}_`)) {
-        next.add(entry.key);
-      }
-    }
-    this.removalKeys.set(next);
-  }
-
-  formatValueForDisplay(value?: string, fallback = ''): string {
-    const trimmed = value?.trim() ?? '';
-    if (!trimmed) return fallback;
-    if (!this.numericPattern.test(trimmed)) return trimmed;
-    const parts = trimmed.split('.');
-    const formattedInt = Number(parts[0]).toLocaleString('en-US');
-    const fraction = parts[1];
-    return fraction ? `${formattedInt}.${fraction}` : formattedInt;
-  }
-
-  private readonly numericPattern = /^-?\d+(?:\.\d+)?$/;
-
-  private createDraftUid(prefix: string): string {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  }
-
-  private buildGeneralDrafts(): EnvironmentVariable[] {
-    const now = new Date().toISOString();
-    return this.generalDrafts()
-      .filter((draft) => draft.key.trim() && draft.value.trim())
-      .map((draft) => ({
-        key: draft.key.trim(),
-        value: draft.value.trim(),
-        description: draft.description.trim() || '追加の環境変数',
-        last_updated: now,
-      }));
-  }
-
-  private buildModelDrafts(): EnvironmentVariable[] {
-    const now = new Date().toISOString();
-    const entries: EnvironmentVariable[] = [];
-    for (const draft of this.aiModelNewDrafts()) {
-      const rawId = draft.modelId.trim();
-      if (!rawId) continue;
-      const normalizedId = rawId.replace(/[^A-Z0-9]/gi, '_').toUpperCase();
-      const displayName = (draft.displayName.trim() || normalizedId).trim();
-      for (const field of AI_MODEL_FIELD_ORDER) {
-        const value = draft.fields[field]?.trim();
-        if (!value) continue;
-        entries.push({
-          key: `AI_MODEL_${normalizedId}_${field}`,
-          value,
-          description: `${displayName} ${this.aiModelFieldMeta[field].label}`,
-          last_updated: now,
-        });
-      }
-    }
-    return entries;
-  }
-
-  private hasModelDrafts(): boolean {
-    return this.aiModelNewDrafts().some(
-      (draft) =>
-        draft.modelId.trim() &&
-        AI_MODEL_FIELD_ORDER.some((field) => (draft.fields[field] ?? '').trim()),
-    );
-  }
-
-  private hasGeneralDrafts(): boolean {
-    return this.generalDrafts().some(
-      (draft) => draft.key.trim() && draft.value.trim(),
-    );
-  }
-
-  async submitChanges(): Promise<void> {
-    if (!this.hasChanges()) return;
-    const additions = [...this.buildGeneralDrafts(), ...this.buildModelDrafts()];
-    const payload = [
-      ...this.entries()
-        .filter((entry) => !this.removalKeys().has(entry.key))
-        .map<EnvironmentVariable>((entry) => ({
-          ...entry,
-          value: this.editBuffer()[entry.key] ?? entry.value,
-        })),
-      ...additions,
-    ];
+  protected async saveUser(): Promise<void> {
+    const form = this.userForm();
+    if (!form.userId.trim()) return;
+    const payload = {
+      userId: form.userId.trim(),
+      isActive: form.isActive,
+      isAdmin: form.isAdmin,
+      isSupport: form.isSupport,
+      isAc: form.isAc,
+      allowedSpend: this.parseNumber(form.allowedSpend),
+      models: this.parseIds(form.modelsInput),
+    };
     try {
-      await this.environmentStore.persist(payload);
-      this.editBuffer.set({});
-      this.editing.set(false);
-      this.removalKeys.set(new Set());
-      this.modelDraftsSignal.set([]);
-      this.generalDraftsSignal.set([]);
+      await this.adminStore.addOrUpdateUser(payload);
+      this.resetUserForm();
     } catch {
-      // keep editing state so user can retry
+      // Error is surfaced via store signals.
     }
+  }
+
+  protected editUser(user: AdminUserRecord): void {
+    this.userForm.set({
+      userId: user.userId,
+      isActive: user.active,
+      isAdmin: user.admin,
+      isSupport: user.support,
+      isAc: Boolean(user.isAc),
+      allowedSpend: (user.allowedSpend ?? '').toString(),
+      modelsInput: user.models.join(', '),
+    });
+  }
+
+  protected resetUserForm(): void {
+    this.userForm.set(this.blankUserForm());
+  }
+
+  protected async handleUsersCsvDownload(): Promise<void> {
+    const blob = await this.adminStore.downloadUsersCsv();
+    if (blob) {
+      this.saveBlob(blob, 'admin-users.csv');
+    }
+  }
+
+  protected async handleUsersCsvUpload(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) return;
+    try {
+      await this.adminStore.uploadUsersCsv(file);
+    } catch {
+      // Error is surfaced via store signals.
+    }
+    if (input) input.value = '';
+  }
+
+  protected async saveModel(): Promise<void> {
+    const form = this.modelForm();
+    if (!form.name.trim() || !form.modelId.trim() || !form.endpoint.trim()) return;
+    const payload = {
+      name: form.name.trim(),
+      modelId: form.modelId.trim(),
+      endpoint: form.endpoint.trim(),
+      reasoningEffort: form.reasoningEffort.trim() || undefined,
+      isVerify: form.isVerify,
+      timeoutSec: this.parseNumber(form.timeoutSec),
+    };
+    try {
+      if (form.id) {
+        await this.adminStore.updateModel(form.id, payload);
+      } else {
+        await this.adminStore.addModel(payload);
+      }
+      this.resetModelForm();
+    } catch {
+      // Error is surfaced via store signals.
+    }
+  }
+
+  protected editModel(model: AdminModel): void {
+    this.modelForm.set({
+      id: model.id,
+      name: model.name,
+      modelId: model.modelId,
+      endpoint: model.endpoint,
+      reasoningEffort: model.reasoningEffort ?? '',
+      isVerify: Boolean(model.isVerify),
+      timeoutSec: model.timeoutSec?.toString() ?? '',
+    });
+  }
+
+  protected async deleteModel(id: string): Promise<void> {
+    try {
+      await this.adminStore.deleteModel(id);
+      if (this.modelForm().id === id) {
+        this.resetModelForm();
+      }
+    } catch {
+      // Error is surfaced via store signals.
+    }
+  }
+
+  protected resetModelForm(): void {
+    this.modelForm.set(this.blankModelForm());
+  }
+
+  protected async saveDefaultModel(): Promise<void> {
+    const form = this.defaultModelForm();
+    if (!form.swarmGroup.trim()) return;
+    const orderNumber = this.parseNumber(form.orderNumber);
+    const payload = {
+      modelIds: this.parseIds(form.modelIdsInput),
+      swarmGroup: form.swarmGroup.trim(),
+      orderNumber: orderNumber ?? 0,
+      allowedSpend: this.parseNumber(form.allowedSpend),
+    };
+    try {
+      if (form.id) {
+        await this.adminStore.updateDefaultModel(form.id, payload);
+      } else {
+        await this.adminStore.addDefaultModel(payload);
+      }
+      this.resetDefaultModelForm();
+    } catch {
+      // Error is surfaced via store signals.
+    }
+  }
+
+  protected editDefaultModel(model: AdminDefaultModel): void {
+    this.defaultModelForm.set({
+      id: model.id,
+      modelIdsInput: model.modelIds.join(', '),
+      swarmGroup: model.swarmGroup,
+      orderNumber: model.orderNumber.toString(),
+      allowedSpend: model.allowedSpend?.toString() ?? '',
+    });
+  }
+
+  protected async deleteDefaultModel(id: string): Promise<void> {
+    try {
+      await this.adminStore.deleteDefaultModel(id);
+      if (this.defaultModelForm().id === id) {
+        this.resetDefaultModelForm();
+      }
+    } catch {
+      // Error is surfaced via store signals.
+    }
+  }
+
+  protected resetDefaultModelForm(): void {
+    this.defaultModelForm.set(this.blankDefaultModelForm());
+  }
+
+  protected async downloadEvents(): Promise<void> {
+    const blob = await this.adminStore.downloadEvents();
+    if (blob) {
+      this.saveBlob(blob, 'admin-events.zip');
+    }
+  }
+
+  protected trackById<T extends { id?: string; userId?: string }>(
+    _index: number,
+    item: T,
+  ): string {
+    return (item as { id?: string }).id ?? (item as { userId?: string }).userId ?? `${_index}`;
   }
 
   isEditing(): boolean {
-    return this.editing();
+    return false;
+  }
+
+  private blankUserForm(): UserFormState {
+    return {
+      userId: '',
+      isActive: true,
+      isAdmin: false,
+      isSupport: false,
+      isAc: false,
+      allowedSpend: '',
+      modelsInput: '',
+    };
+  }
+
+  private blankModelForm(): ModelFormState {
+    return {
+      id: undefined,
+      name: '',
+      modelId: '',
+      endpoint: '',
+      reasoningEffort: '',
+      isVerify: true,
+      timeoutSec: '',
+    };
+  }
+
+  private blankDefaultModelForm(): DefaultModelFormState {
+    return {
+      id: undefined,
+      modelIdsInput: '',
+      swarmGroup: '',
+      orderNumber: '',
+      allowedSpend: '',
+    };
+  }
+
+  private parseNumber(value: string): number | undefined {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const num = Number(trimmed);
+    return Number.isFinite(num) ? num : undefined;
+  }
+
+  private parseIds(input: string): string[] {
+    return input
+      .split(/[,|]/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  private saveBlob(blob: Blob, filename: string): void {
+    if (typeof window === 'undefined') return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 }
