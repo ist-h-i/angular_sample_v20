@@ -10,24 +10,21 @@
     <div class="text-sm text-gray-500">{{ requestsList.length }} 件アクティブ</div>
   </div>
 
-  <div class="flex-1 min-h-0 flex flex-col">
-    <!-- Requests list -->
-    <ul
-      aria-label="リクエスト項目"
-      class="bg-white flex flex-col flex-1 min-h-0 overflow-auto gap-2 mx-2"
-    >
-      @if (requestsList.length) {
-        @for (r of requestsList; track r.request_id) {
-          <li>
-            <app-request
-              [request]="r"
-              [selectedRequestId]="selectedRequestId()"
-              (selectRequest)="onSelectRequest($event)"
-            ></app-request>
-          </li>
-        }
-      } @else {
-        <li class="text-sm text-gray-500">リクエストはありません</li>
+  <!-- Requests list -->
+  <ul
+    aria-label="リクエスト項目"
+    class="bg-white flex flex-col flex-1 gap-2 overflow-auto mx-2 min-h-0"
+  >
+    @if (requestsList.length) {
+      @for (r of requestsList; track r.request_id) {
+        <li>
+          <app-request
+            [request]="r"
+            [selectedRequestId]="selectedRequestId()"
+            [isNew]="highlightedRequestId() === r.request_id"
+            (selectRequest)="onSelectRequest($event)"
+          ></app-request>
+        </li>
       }
     </ul>
 
