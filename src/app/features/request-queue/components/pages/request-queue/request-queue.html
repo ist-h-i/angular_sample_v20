@@ -1,45 +1,46 @@
 <div class="flex h-full min-h-0 flex-col">
   <!-- Header -->
   <div class="flex items-center h-10 px-2">
-    <h3 class="m-0 text-base font-medium">リクエスト</h3>
+    <h3 class="m-0 text-base font-medium">Request Queue</h3>
   </div>
 
   <!-- Row -->
   <div class="flex items-center gap-2 h-10 px-2">
-    <div class="rounded-full bg-slate-100 text-slate-900 text-xs px-2 py-1">キュー</div>
-    <div class="text-sm text-gray-500">{{ requestsList.length }} 件アクティブ</div>
+    <span class="rounded-full bg-slate-100 text-slate-900 text-xs px-2 py-1">Queue</span>
+    <span class="text-sm text-gray-500">{{ requestsList.length }} active</span>
   </div>
 
   <!-- Requests list -->
   <ul
-    aria-label="リクエスト項目"
+    aria-label="Request list"
     class="bg-white flex flex-col flex-1 gap-2 overflow-auto mx-2 min-h-0"
   >
-    @if (requestsList.length) {
-      @for (r of requestsList; track r.request_id) {
-        <li>
-          <app-request
-            [request]="r"
-            [selectedRequestId]="selectedRequestId()"
-            [isNew]="highlightedRequestId() === r.request_id"
-            (selectRequest)="onSelectRequest($event)"
-          ></app-request>
-        </li>
-      }
-    </ul>
+    <ng-container *ngIf="requestsList.length; else emptyState">
+      <li *ngFor="let r of requestsList; trackBy: trackByCreated">
+        <app-request
+          [request]="r"
+          [selectedRequestId]="selectedRequestId()"
+          [isNew]="highlightedRequestId() === r.request_id"
+          (selectRequest)="onSelectRequest($event)"
+        ></app-request>
+      </li>
+    </ng-container>
+    <ng-template #emptyState>
+      <li class="p-4 text-sm text-gray-500">No requests yet.</li>
+    </ng-template>
+  </ul>
 
-    <!-- Actions: fixed to bottom of the viewport -->
-    <div class="h-14 px-2 gap-2 flex items-center flex-shrink-0 sticky bottom-0 bg-white">
-      <app-primary-button
-        label="新しいリクエスト"
-        id="newRequest"
-        (clicked)="handleNewRequestClick()"
-      ></app-primary-button>
-      <app-secondary-button
-        label="更新"
-        id="refreshBtn"
-        (clicked)="refreshClick()"
-      ></app-secondary-button>
-    </div>
+  <!-- Actions: fixed to bottom of the viewport -->
+  <div class="h-14 px-2 gap-2 flex items-center flex-shrink-0 sticky bottom-0 bg-white">
+    <app-primary-button
+      label="New request"
+      id="newRequest"
+      (clicked)="handleNewRequestClick()"
+    ></app-primary-button>
+    <app-secondary-button
+      label="Refresh"
+      id="refreshBtn"
+      (clicked)="refreshClick()"
+    ></app-secondary-button>
   </div>
 </div>

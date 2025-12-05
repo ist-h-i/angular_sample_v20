@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { PrimaryButton } from '../../../../../shared/ui/primary-button/primary-button';
 import { SecondaryButton } from '../../../../../shared/ui/secondary-button/secondary-button';
 import { Request } from '../../ui/request/request';
@@ -9,7 +10,7 @@ import { SelectedRequestStore } from '../../../../../shared/core/stores/selected
 @Component({
   selector: 'app-request-queue',
   standalone: true,
-  imports: [PrimaryButton, SecondaryButton, Request],
+  imports: [CommonModule, PrimaryButton, SecondaryButton, Request],
   templateUrl: './request-queue.html',
   styleUrl: './request-queue.scss',
 })
@@ -80,6 +81,14 @@ export class RequestQueue implements OnInit, OnDestroy {
     }
   });
 
+  private readonly highlightMessageActivityEffect = effect(() => {
+    const activity = this.facade.recentActivity();
+    const requestId = activity?.id ?? null;
+    if (requestId) {
+      this.setHighlightedRequest(requestId);
+    }
+  });
+
   ngOnInit(): void {
     void (async () => {
       const refreshPromise = this.facade.refreshStatuses();
@@ -99,10 +108,8 @@ export class RequestQueue implements OnInit, OnDestroy {
   protected readonly selectedRequestId = computed(() => this.selectedStore.selectedId());
 
   // trackBy helper
-  trackByCreated(index: number, item: Record<string, unknown> | undefined): string | number {
-    const PrimitiveKey: string | number | undefined =
-      (item?.['created'] as any) ?? (item?.['request_id'] as any);
-    return (PrimitiveKey as any) ?? index;
+  trackByCreated(index: number, item: RequestSummary | undefined): string | number {
+    return item?.request_id ?? index;
   }
 
   refreshClick(): void {
@@ -141,6 +148,7 @@ export class RequestQueue implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.trackNewRequestsEffect.destroy();
+    this.highlightMessageActivityEffect.destroy();
     if (this.highlightTimeoutId) {
       clearTimeout(this.highlightTimeoutId);
       this.highlightTimeoutId = null;
