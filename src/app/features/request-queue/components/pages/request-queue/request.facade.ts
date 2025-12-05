@@ -5,8 +5,10 @@ import type { RequestStatus } from '../../../../../shared/core/models/request-st
 import type {
   RequestStatusResponse,
   CreateRequestResponse,
+  CreateRequestPayload,
 } from '../../../../../shared/core/services/api.service';
 import { ApiService } from '../../../../../shared/core/services/api.service';
+import { NotificationService } from '../../../../../shared/core/services/notification.service';
 import { InitialDataStore } from '../../../../../shared/core/stores/initial-data.store';
 import { SelectedRequestStore } from '../../../../../shared/core/stores/selected-request.store';
 import { REQUEST_POLLING_CONFIG } from './request-polling.config';
@@ -41,7 +43,10 @@ export class RequestFacade {
     clearFn(id);
   };
 
-  constructor(private readonly api: ApiService) {
+  constructor(
+    private readonly api: ApiService,
+    private readonly notificationService: NotificationService,
+  ) {
     effect(() => {
       const data = this.initialDataStore.initialData();
       if (!data) return;
@@ -99,10 +104,15 @@ export class RequestFacade {
     this._requests.set(next);
   }
 
-  async submitRequest(queryText: string, requestHistoryId: string | null): Promise<CreateRequestResponse> {
-    const payload = {
+  async submitRequest(
+    queryText: string,
+    requestHistoryId: string | null,
+    aiModelId: string | null = null,
+  ): Promise<CreateRequestResponse> {
+    const payload: CreateRequestPayload = {
       query_text: queryText,
       request_history_id: requestHistoryId,
+      ai_model_id: aiModelId ?? undefined,
     };
     const response = await firstValueFrom(this.api.createRequest(payload));
     if (requestHistoryId) {
@@ -193,6 +203,7 @@ export class RequestFacade {
   ): boolean {
     const current = { ...(this._requests() || {}) };
     const existing = current[id];
+    const previousStatus = existing?.status;
     const status = payload.status;
     const lastUpdated = payload.last_updated ?? payload.updated_at ?? new Date().toISOString();
     current[id] = {
@@ -205,6 +216,16 @@ export class RequestFacade {
     this._requests.set(current);
     if (entry.mode === 'chat' && this.isDisplayedInChatPanel(id) && this.isCompletedStatus(status)) {
       this.selectedStore.startResultStream(id);
+    }
+
+    const transitionedToCompleted =
+      this.isPendingStatus(previousStatus) && this.isCompletedStatus(status);
+    if (transitionedToCompleted) {
+      void this.notificationService.notifyRequestComplete(
+        current[id].title || 'Request completed',
+        id,
+        current[id].snippet,
+      );
     }
 
     if (!this.isPendingStatus(status)) {
@@ -254,7 +275,9 @@ export class RequestFacade {
   }
 
   private isPendingStatus(status: RequestStatus | string | undefined | null): boolean {
-    return typeof status === 'string' && status.toLowerCase() === 'pending';
+    if (typeof status !== 'string') return false;
+    const normalized = status.toLowerCase();
+    return normalized === 'pending' || normalized === 'processing';
   }
 
   private isCompletedStatus(status: RequestStatus | string | undefined | null): boolean {

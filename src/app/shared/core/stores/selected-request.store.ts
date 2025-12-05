@@ -13,17 +13,35 @@ interface ResultStreamState {
   errorHandler: (event: Event) => void;
 }
 
+interface ThoughtPhase {
+  title: string;
+  steps: string[];
+}
+
+export interface ThinkingProcessState {
+  raw: string;
+  phases: ThoughtPhase[];
+  isStreaming: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SelectedRequestStore {
   private readonly _selectedId = signal<string | null>(null);
   private readonly _detail = signal<RequestDetail | null>(null);
   private readonly _isLoading = signal<boolean>(false);
   private readonly _error = signal<unknown | null>(null);
+  private readonly _thinkingState = signal<Record<string, ThinkingProcessState>>({});
 
   readonly selectedId = this._selectedId.asReadonly();
   readonly detail = this._detail.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly thinkingProcess = computed(() => {
+    const id = this._selectedId();
+    if (!id) return null;
+    const snapshot = this._thinkingState();
+    return snapshot[id] ?? null;
+  });
 
   // Convenience derived values
   readonly hasDetail = computed(() => this._detail() != null);
@@ -57,8 +75,10 @@ export class SelectedRequestStore {
     if (!id || typeof window === 'undefined' || typeof EventSource === 'undefined') return;
     if (this.resultStreams.has(id)) return;
 
-    const url = `/requests/${encodeURIComponent(id)}/result`;
-    const source = new EventSource(url);
+    this.initializeThinkingStateForStream(id);
+
+    const source = this.api.createResultStream(id);
+    if (!source) return;
     const messageHandler = (event: MessageEvent) => this.handleSseMessage(id, event);
     const errorHandler = () => this.handleSseError(id, source);
 
@@ -77,6 +97,7 @@ export class SelectedRequestStore {
   stopResultStream(id: string, reloadDetail = true): void {
     const state = this.resultStreams.get(id);
     if (!state) return;
+    this.finalizeThinkingState(id);
     state.source.removeEventListener('message', state.messageHandler);
     state.source.removeEventListener('error', state.errorHandler);
     state.source.close();
@@ -103,7 +124,17 @@ export class SelectedRequestStore {
     this._error.set(null);
     try {
       const detail = await firstValueFrom(this.api.getRequestById(id));
-      this._detail.set(detail ?? null);
+      const normalized = detail
+        ? { ...detail, messages: this.normalizeMessages(detail.messages ?? []) }
+        : null;
+      this._detail.set(normalized);
+      this.applyThinkingProcessSnapshot(normalized);
+      if (detail && !this.api.isMockMode()) {
+        const status = typeof detail.status === 'string' ? detail.status.toLowerCase() : '';
+        if (status === 'processing' || status === 'completed') {
+          this.startResultStream(detail.request_id);
+        }
+      }
     } catch (err) {
       this._error.set(err);
       this._detail.set(null);
@@ -123,6 +154,7 @@ export class SelectedRequestStore {
     const payload = this.parseSsePayload(trimmed);
     const chunk = this.extractChunk(payload);
     if (!chunk) return;
+    this.updateThinkingStateForChunk(id, chunk);
     const annotations = this.extractAnnotations(payload);
     this.appendStreamChunk(id, chunk, annotations);
   }
@@ -158,6 +190,11 @@ export class SelectedRequestStore {
       timestamp: existing?.timestamp ?? new Date().toISOString(),
     };
     this._detail.set({ ...detail, messages: updated });
+  }
+
+  private normalizeMessages(messages: Message[] | null | undefined): Message[] {
+    if (!messages || !messages.length) return [];
+    return messages.filter((message): message is Message => Boolean(message));
   }
 
   private parseSsePayload(raw: string): unknown {
@@ -207,5 +244,108 @@ export class SelectedRequestStore {
       }
     }
     return undefined;
+  }
+
+  private applyThinkingProcessSnapshot(detail: RequestDetail | null): void {
+    if (!detail) return;
+    const id = detail.request_id;
+    if (!id) return;
+    const text = (detail.thinking_process ?? '').trim();
+    const current = this._thinkingState();
+    if (!text) {
+      if (current[id]) {
+        const { [id]: _removed, ...rest } = current;
+        this._thinkingState.set(rest);
+      }
+      return;
+    }
+    this._thinkingState.set({
+      ...current,
+      [id]: {
+        raw: text,
+        phases: this.parseThinkingPhases(text),
+        isStreaming: false,
+      },
+    });
+  }
+
+  private initializeThinkingStateForStream(id: string): void {
+    if (!id) return;
+    const current = this._thinkingState();
+    this._thinkingState.set({
+      ...current,
+      [id]: {
+        raw: '',
+        phases: [],
+        isStreaming: true,
+      },
+    });
+  }
+
+  private updateThinkingStateForChunk(id: string, chunk: string): void {
+    if (!id || !chunk) return;
+    const current = this._thinkingState();
+    const existing = current[id];
+    const previousRaw = existing?.raw ?? '';
+    const nextRaw = `${previousRaw}${chunk}`;
+    const nextState: ThinkingProcessState = {
+      raw: nextRaw,
+      phases: this.parseThinkingPhases(nextRaw),
+      isStreaming: true,
+    };
+    this._thinkingState.set({
+      ...current,
+      [id]: nextState,
+    });
+  }
+
+  private finalizeThinkingState(id: string): void {
+    if (!id) return;
+    const current = this._thinkingState();
+    const existing = current[id];
+    if (!existing) return;
+    this._thinkingState.set({
+      ...current,
+      [id]: {
+        ...existing,
+        isStreaming: false,
+      },
+    });
+  }
+
+  private parseThinkingPhases(raw: string): ThoughtPhase[] {
+    const lines = raw.split(/\r?\n/);
+    const phases: ThoughtPhase[] = [];
+    let current: ThoughtPhase | null = null;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const isBullet = /^[-*・•]/.test(trimmed);
+      if (!isBullet) {
+        current = { title: this.normalizePhaseTitle(trimmed), steps: [] };
+        phases.push(current);
+        continue;
+      }
+      if (!current) {
+        current = { title: 'Thought Process', steps: [] };
+        phases.push(current);
+      }
+      const stepText = trimmed.replace(/^[-*・•\s]+/, '').trim();
+      current.steps.push(stepText || trimmed);
+    }
+
+    return phases;
+  }
+
+  private normalizePhaseTitle(value: string): string {
+    const text = (value ?? '').trim();
+    if (!text) return 'Phase';
+    const match = text.match(/phase\s*[:\s]*(\d+)(.*)/i);
+    if (match) {
+      const rest = (match[2] ?? '').trim();
+      return rest ? `Phase ${match[1]}: ${rest}` : `Phase ${match[1]}`;
+    }
+    return text.charAt(0).toUpperCase() + text.slice(1);
   }
 }

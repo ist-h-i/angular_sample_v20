@@ -4,7 +4,8 @@
     class="rq-card-inner bg-white rounded-xl p-4 shadow-md border border-slate-100 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-transform duration-150 w-full text-left"
     (click)="onClick()"
     [class.selected]="isSelected()"
-    [attr.aria-busy]="isBusy ? 'true' : 'false'"
+    [attr.aria-busy]="isBusy"
+    [class.is-new]="isNew"
   >
     <div class="rq-card-grid flex items-center gap-4">
       <div class="rq-card-content flex-1 min-w-0">
@@ -44,7 +45,7 @@
           [attr.aria-live]="statusLive"
           [attr.aria-busy]="isBusy ? 'true' : null"
           [attr.aria-label]="statusLabel"
-        >
+          [class.is-new]="isNew">
           <span class="sr-only">Status:</span>
           <span class="rq-status-text">{{ statusText }}</span>
         </div>

@@ -24,8 +24,124 @@
   align-self: flex-start;
 }
 
+.bubble--reasoning {
+  color: var(--muted-text);
+  background: var(--panel);
+  border: 1px dashed var(--panel-border);
+  align-self: flex-start;
+}
+
+.message__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-text);
+  margin-bottom: 4px;
+}
+
 .message-row {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+}
+
+.message-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.message-stack.items-end {
+  align-items: flex-end;
+}
+
+.message-stack.items-start {
+  align-items: flex-start;
+}
+
+.thinking-inline-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.thinking-inline {
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+  max-width: 78%;
+  box-shadow: var(--muted-shadow);
+}
+
+.thinking-inline__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.thinking-inline__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-text);
+  margin: 0;
+}
+
+.thinking-inline__toggle {
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 999px;
+  color: var(--muted-text);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.thinking-inline__toggle:hover {
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--text);
+}
+
+.thinking-inline__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.thinking-inline__phase + .thinking-inline__phase {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--panel-border);
+}
+
+.thinking-inline__phase-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.thinking-inline__phase-steps {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.thinking-inline__phase-steps li + li {
+  margin-top: 4px;
+}
+
+.thinking-inline__raw {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  color: var(--text);
 }
