@@ -28,6 +28,59 @@
     </div>
 
     <div class="flex items-center gap-2">
+      <button
+        type="button"
+        class="inline-flex items-center justify-center rounded-full border p-2 text-slate-400 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+        [class.border-emerald-200]="notificationPreferences.isEnabled()"
+        [class.border-slate-200]="!notificationPreferences.isEnabled()"
+        [class.bg-emerald-50]="notificationPreferences.isEnabled()"
+        [class.bg-white]="!notificationPreferences.isEnabled()"
+        [class.text-emerald-600]="notificationPreferences.isEnabled()"
+        [class.text-slate-500]="!notificationPreferences.isEnabled()"
+        (click)="toggleNotifications()"
+        [attr.aria-pressed]="notificationPreferences.isEnabled()"
+        [attr.title]="notificationPreferences.isEnabled() ? '通知を無効にする' : '通知を有効にする'"
+      >
+        <span class="sr-only">
+          {{ notificationPreferences.isEnabled() ? '通知オン' : '通知オフ' }}
+        </span>
+        @if (notificationPreferences.isEnabled()) {
+          <svg
+            aria-hidden="true"
+            class="h-6 w-6"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke-width="1.5"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
+            />
+          </svg>
+        } @else {
+          <svg
+            aria-hidden="true"
+            class="h-6 w-6"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke-width="1.5"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9.143 17.082a24.248 24.248 0 0 0 3.844.148m-3.844-.148a23.856 23.856 0 0 1-5.455-1.31 8.964 8.964 0 0 0 2.3-5.542m3.155 6.852a3 3 0 0 0 5.667 1.97m1.965-2.277L21 21m-4.225-4.225a23.81 23.81 0 0 0 3.536-1.003A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6.53 6.53m10.245 10.245L6.53 6.53M3 3l3.53 3.53"
+            />
+          </svg>
+        }
+      </button>
       <ng-content></ng-content>
     </div>
   </div>

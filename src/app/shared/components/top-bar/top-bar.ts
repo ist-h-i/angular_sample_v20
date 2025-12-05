@@ -1,4 +1,5 @@
 import { Component, Input, ViewChild, ElementRef, AfterViewInit, HostListener } from '@angular/core';
+import { NotificationPreferenceStore } from '../../core/stores/notification-preference.store';
 
 @Component({
   selector: 'app-top-bar',
@@ -18,6 +19,8 @@ export class TopBar implements AfterViewInit {
 
   @ViewChild('topbar', { static: true })
   private topbarEl?: ElementRef<HTMLElement>;
+
+  constructor(public readonly notificationPreferences: NotificationPreferenceStore) {}
 
   ngAfterViewInit(): void {
     this.updateTopbarHeightVar();
@@ -44,6 +47,10 @@ export class TopBar implements AfterViewInit {
       // Expose globally so sibling routes can consume it
       document.documentElement.style.setProperty('--topbar-height', `${height}px`);
     }
+  }
+
+  toggleNotifications(): void {
+    this.notificationPreferences.toggle();
   }
 
   onMediaLoaded(): void {
