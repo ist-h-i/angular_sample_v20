@@ -15,19 +15,20 @@
     aria-label="Request list"
     class="bg-white flex flex-col flex-1 gap-2 overflow-auto mx-2 min-h-0"
   >
-    <ng-container *ngIf="requestsList.length; else emptyState">
-      <li *ngFor="let r of requestsList; trackBy: trackByCreated">
-        <app-request
-          [request]="r"
-          [selectedRequestId]="selectedRequestId()"
-          [isNew]="highlightedRequestId() === r.request_id"
-          (selectRequest)="onSelectRequest($event)"
-        ></app-request>
-      </li>
-    </ng-container>
-    <ng-template #emptyState>
+    @if (requestsList.length) {
+      @for (r of requestsList; track r.request_id) {
+        <li>
+          <app-request
+            [request]="r"
+            [selectedRequestId]="selectedRequestId()"
+            [isNew]="highlightedRequestId() === r.request_id"
+            (selectRequest)="onSelectRequest($event)"
+          ></app-request>
+        </li>
+      }
+    } @else {
       <li class="p-4 text-sm text-gray-500">No requests yet.</li>
-    </ng-template>
+    }
   </ul>
 
   <!-- Actions: fixed to bottom of the viewport -->
