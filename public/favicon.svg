@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="App favicon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b6cb0" />
+      <stop offset="1" stop-color="#1d4ed8" />
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)" />
+  <rect width="64" height="64" rx="14" fill="url(#shine)" />
+  <g stroke="#f8fbff" stroke-linecap="round" stroke-width="6">
+    <path d="M18 20h26" opacity="0.95" />
+    <path d="M18 30h22" opacity="0.88" />
+    <path d="M18 40h18" opacity="0.8" />
+  </g>
+  <circle cx="45" cy="40" r="9" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5" />
+  <path d="M41.5 40L45 43.6 51.5 34.5" fill="none" stroke="#1d4ed8" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" />
+</svg>

@@ -11,7 +11,7 @@ export class NotificationService {
   private readonly notifiedIds = new Set<string>();
   private permissionRequest: Promise<NotificationPermission> | null = null;
   private readonly appName = 'Sample App';
-  private readonly iconUrl = '/favicon.ico';
+  private readonly iconUrl = '/assets/favicon.png';
 
   constructor(private readonly preferenceStore: NotificationPreferenceStore) {}
 
@@ -22,7 +22,7 @@ export class NotificationService {
     const granted = await this.ensurePermission();
     if (!granted) return;
 
-    const requestTitle = title?.trim() ? title.trim() : 'Request completed';
+    const requestTitle = title?.trim() ? `【${title.trim()}】` : '【Request completed】';
     const snippet = this.formatSnippet(body);
     const notificationTitle = this.appName;
     const notificationBody = [requestTitle, snippet].filter(Boolean).join('\n');
