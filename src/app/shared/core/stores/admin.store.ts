@@ -8,6 +8,7 @@ import type {
   AdminModelPayload,
   AdminUserPayload,
   AdminUserRecord,
+  AdminUserThreadStats,
 } from '../models/admin.model';
 import { ApiService } from '../services/api.service';
 
@@ -28,6 +29,7 @@ export class AdminStore {
   readonly users = computed(() => this._data()?.users ?? []);
   readonly models = computed(() => this._data()?.models ?? []);
   readonly defaultModels = computed(() => this._data()?.defaultModels ?? []);
+  readonly threadStats = computed<AdminUserThreadStats[]>(() => this._data()?.threads ?? []);
 
   constructor(private readonly api: ApiService) {}
 
@@ -36,7 +38,7 @@ export class AdminStore {
     this._isLoading.set(true);
     try {
       const payload = await firstValueFrom(this.api.getAdminInitialData());
-      this._data.set(payload ?? { users: [], models: [], defaultModels: [] });
+      this._data.set(payload ?? { users: [], models: [], defaultModels: [], threads: [] });
       this._error.set(null);
       this._actionMessage.set(null);
     } catch (err) {
@@ -178,7 +180,7 @@ export class AdminStore {
   }
 
   private updateData(updater: (data: AdminInitialResponse) => AdminInitialResponse): void {
-    const base = this._data() ?? { users: [], models: [], defaultModels: [] };
+    const base = this._data() ?? { users: [], models: [], defaultModels: [], threads: [] };
     this._data.set(updater(base));
   }
 

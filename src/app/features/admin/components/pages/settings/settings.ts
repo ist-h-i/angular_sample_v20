@@ -35,6 +35,22 @@ interface DefaultModelFormState {
   allowedSpend: string;
 }
 
+interface UserThreadRow {
+  userId: string;
+  statuses: Record<string, number>;
+  total: number;
+}
+
+type UsageFilterMode = 'topCount' | 'threshold' | 'userSearch';
+
+interface UsageFilterState {
+  mode: UsageFilterMode;
+  topCount: number;
+  minRequests: number;
+  userQuery: string;
+  binSize: number;
+}
+
 @Component({
   selector: 'app-settings',
   standalone: true,
@@ -52,6 +68,7 @@ export class Settings implements OnInit {
   protected readonly users = this.adminStore.users;
   protected readonly models = this.adminStore.models;
   protected readonly defaultModels = this.adminStore.defaultModels;
+  protected readonly threadStats = this.adminStore.threadStats;
   protected readonly hasData = computed(
     () => !!this.users().length || !!this.models().length || !!this.defaultModels().length,
   );
@@ -59,6 +76,88 @@ export class Settings implements OnInit {
   protected readonly userForm = signal<UserFormState>(this.blankUserForm());
   protected readonly modelForm = signal<ModelFormState>(this.blankModelForm());
   protected readonly defaultModelForm = signal<DefaultModelFormState>(this.blankDefaultModelForm());
+  protected readonly usageFilters = signal<UsageFilterState>({
+    mode: 'topCount',
+    topCount: 10,
+    minRequests: 50,
+    userQuery: '',
+    binSize: 10,
+  });
+
+  private readonly userThreadTotals = computed<UserThreadRow[]>(() =>
+    this.threadStats().map((entry) => ({
+      userId: entry.userId,
+      statuses: { ...entry.statuses },
+      total: this.sumStatuses(entry.statuses),
+    })),
+  );
+
+  protected readonly statusTotals = computed(() => {
+    const totals: Record<string, number> = {};
+    let overall = 0;
+    for (const entry of this.userThreadTotals()) {
+      for (const [status, count] of Object.entries(entry.statuses)) {
+        const safe = this.toSafeNumber(count);
+        totals[status] = (totals[status] ?? 0) + safe;
+        overall += safe;
+      }
+    }
+    return { totals, overall };
+  });
+
+  protected readonly statusKeys = computed(() => {
+    const totals = this.statusTotals().totals;
+    const keys = Object.keys(totals);
+    return keys.sort((a, b) => {
+      const diff = (totals[b] ?? 0) - (totals[a] ?? 0);
+      return diff !== 0 ? diff : a.localeCompare(b);
+    });
+  });
+
+  protected readonly filteredUsageRows = computed(() => {
+    const filters = this.usageFilters();
+    const rows = [...this.userThreadTotals()].sort((a, b) => b.total - a.total);
+    if (filters.mode === 'topCount') {
+      const limit = this.normalizeNumber(filters.topCount, 1);
+      return rows.slice(0, limit);
+    }
+    if (filters.mode === 'threshold') {
+      const min = this.normalizeNumber(filters.minRequests, 0);
+      return rows.filter((row) => row.total >= min);
+    }
+    const query = filters.userQuery.trim().toLowerCase();
+    if (!query) return rows;
+    return rows.filter((row) => row.userId.toLowerCase().includes(query));
+  });
+
+  protected readonly filteredUsageSummary = computed(() => {
+    const rows = this.filteredUsageRows();
+    return {
+      userCount: rows.length,
+      totalRequests: rows.reduce((sum, row) => sum + row.total, 0),
+    };
+  });
+
+  protected readonly histogramBuckets = computed(() => {
+    const binSize = this.normalizeNumber(this.usageFilters().binSize, 1);
+    const bucketCounts: Record<number, number> = {};
+    for (const entry of this.userThreadTotals()) {
+      const bucket = Math.floor(entry.total / binSize) * binSize;
+      bucketCounts[bucket] = (bucketCounts[bucket] ?? 0) + 1;
+    }
+    const sorted = Object.keys(bucketCounts)
+      .map((key) => Number(key))
+      .sort((a, b) => a - b);
+    return sorted.map((start) => ({
+      start,
+      end: start + binSize - 1,
+      count: bucketCounts[start],
+    }));
+  });
+
+  protected readonly histogramMaxCount = computed(() =>
+    Math.max(0, ...this.histogramBuckets().map((bucket) => bucket.count)),
+  );
 
   ngOnInit(): void {
     void this.adminStore.load();
@@ -242,6 +341,38 @@ export class Settings implements OnInit {
     }
   }
 
+  protected handleUsageCsvDownload(): void {
+    if (!this.threadStats().length) return;
+    const rows = this.userThreadTotals();
+    const headers = ['userId', 'total', ...this.statusKeys()];
+    const lines = rows.map((row) =>
+      [row.userId, row.total, ...this.statusKeys().map((key) => row.statuses[key] ?? 0)].join(
+        ',',
+      ),
+    );
+    const csv = [headers.join(','), ...lines].join('\n');
+    this.saveBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'admin-usage.csv');
+  }
+
+  protected setUsageMode(mode: UsageFilterMode): void {
+    this.usageFilters.update((prev) => ({ ...prev, mode }));
+  }
+
+  protected updateUsageFilter<K extends keyof UsageFilterState>(
+    key: K,
+    value: UsageFilterState[K],
+  ): void {
+    this.usageFilters.update((prev) => {
+      if (key === 'topCount' || key === 'minRequests' || key === 'binSize') {
+        return {
+          ...prev,
+          [key]: this.normalizeNumber(value as number, key === 'binSize' ? 1 : 0),
+        } as UsageFilterState;
+      }
+      return { ...prev, [key]: value } as UsageFilterState;
+    });
+  }
+
   protected trackById<T extends { id?: string; userId?: string }>(
     _index: number,
     item: T,
@@ -309,5 +440,24 @@ export class Settings implements OnInit {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  protected formatNumber(value: number): string {
+    return Number(value).toLocaleString();
+  }
+
+  private sumStatuses(statuses: Record<string, number> | undefined): number {
+    return Object.values(statuses ?? {}).reduce((sum, value) => sum + this.toSafeNumber(value), 0);
+  }
+
+  private toSafeNumber(value: number): number {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+  }
+
+  private normalizeNumber(value: number | string, min: number): number {
+    const num = Math.floor(Number(value));
+    if (!Number.isFinite(num)) return Math.max(0, min);
+    return num < min ? min : num;
   }
 }
