@@ -4,6 +4,7 @@ import { AdminStore } from '../../../../../shared/core/stores/admin.store';
 import type {
   AdminDefaultModel,
   AdminModel,
+  AdminUserThread,
   AdminUserRecord,
 } from '../../../../../shared/core/models/admin.model';
 
@@ -35,6 +36,12 @@ interface DefaultModelFormState {
   allowedSpend: string;
 }
 
+interface UsageRow {
+  userId: string;
+  statusCounts: Record<string, number>;
+  total: number;
+}
+
 @Component({
   selector: 'app-settings',
   standalone: true,
@@ -52,6 +59,7 @@ export class Settings implements OnInit {
   protected readonly users = this.adminStore.users;
   protected readonly models = this.adminStore.models;
   protected readonly defaultModels = this.adminStore.defaultModels;
+  protected readonly threads = this.adminStore.threads;
   protected readonly hasData = computed(
     () => !!this.users().length || !!this.models().length || !!this.defaultModels().length,
   );
@@ -59,6 +67,44 @@ export class Settings implements OnInit {
   protected readonly userForm = signal<UserFormState>(this.blankUserForm());
   protected readonly modelForm = signal<ModelFormState>(this.blankModelForm());
   protected readonly defaultModelForm = signal<DefaultModelFormState>(this.blankDefaultModelForm());
+
+  protected readonly usageMode = signal<'limit' | 'threshold' | 'search'>('limit');
+  protected readonly topLimit = signal(20);
+  protected readonly thresholdCount = signal(100);
+  protected readonly userQuery = signal('');
+  protected readonly histogramBinSize = signal(50);
+
+  protected readonly statusKeys = computed(() => this.collectStatusKeys(this.threads()));
+  protected readonly usageRows = computed<UsageRow[]>(() =>
+    this.threads().map((thread) => this.toUsageRow(thread)),
+  );
+  protected readonly statusTotals = computed(() => this.sumStatusTotals(this.usageRows()));
+  protected readonly totalRequests = computed(() =>
+    Object.values(this.statusTotals()).reduce((sum, value) => sum + value, 0),
+  );
+  protected readonly sortedUsageRows = computed(() =>
+    [...this.usageRows()].sort((a, b) => b.total - a.total || a.userId.localeCompare(b.userId)),
+  );
+  protected readonly filteredUsageRows = computed(() =>
+    this.filterUsageRows(this.sortedUsageRows(), this.usageMode(), {
+      limit: this.topLimit(),
+      threshold: this.thresholdCount(),
+      query: this.userQuery(),
+    }),
+  );
+  protected readonly filteredUsageSummary = computed(() => {
+    const rows = this.filteredUsageRows();
+    return {
+      count: rows.length,
+      total: rows.reduce((sum, row) => sum + row.total, 0),
+    };
+  });
+  protected readonly histogramBuckets = computed(() =>
+    this.buildHistogramBuckets(this.usageRows(), Math.max(1, Math.floor(this.histogramBinSize()))),
+  );
+  protected readonly maxHistogramCount = computed(() =>
+    this.histogramBuckets().reduce((max, bucket) => Math.max(max, bucket.count), 0),
+  );
 
   ngOnInit(): void {
     void this.adminStore.load();
@@ -242,6 +288,33 @@ export class Settings implements OnInit {
     }
   }
 
+  protected async handleUsageCsvDownload(): Promise<void> {
+    const blob = await this.adminStore.downloadUsageCsv();
+    if (blob) {
+      this.saveBlob(blob, 'admin-usage.csv');
+    }
+  }
+
+  protected setUsageMode(mode: 'limit' | 'threshold' | 'search'): void {
+    this.usageMode.set(mode);
+  }
+
+  protected updateTopLimit(value: string | number): void {
+    this.topLimit.set(this.ensurePositiveInteger(value, 1));
+  }
+
+  protected updateThresholdCount(value: string | number): void {
+    this.thresholdCount.set(this.ensurePositiveInteger(value, 0));
+  }
+
+  protected updateUserQuery(value: string): void {
+    this.userQuery.set(value);
+  }
+
+  protected updateHistogramBinSize(value: string | number): void {
+    this.histogramBinSize.set(this.ensurePositiveInteger(value, 1));
+  }
+
   protected trackById<T extends { id?: string; userId?: string }>(
     _index: number,
     item: T,
@@ -299,6 +372,86 @@ export class Settings implements OnInit {
       .split(/[,|]/)
       .map((entry) => entry.trim())
       .filter(Boolean);
+  }
+
+  private toUsageRow(thread: AdminUserThread): UsageRow {
+    return {
+      userId: thread.userId,
+      statusCounts: thread.statusCounts,
+      total: this.sumCounts(thread.statusCounts),
+    };
+  }
+
+  private collectStatusKeys(threads: AdminUserThread[]): string[] {
+    const keys = new Set<string>();
+    for (const thread of threads) {
+      Object.keys(thread.statusCounts).forEach((key) => keys.add(key));
+    }
+    return Array.from(keys).sort();
+  }
+
+  private sumCounts(counts: Record<string, number>): number {
+    return Object.values(counts).reduce((sum, value) => sum + (value ?? 0), 0);
+  }
+
+  private sumStatusTotals(rows: UsageRow[]): Record<string, number> {
+    const totals: Record<string, number> = {};
+    for (const row of rows) {
+      for (const [status, count] of Object.entries(row.statusCounts)) {
+        totals[status] = (totals[status] ?? 0) + (count ?? 0);
+      }
+    }
+    return totals;
+  }
+
+  private filterUsageRows(
+    rows: UsageRow[],
+    mode: 'limit' | 'threshold' | 'search',
+    criteria: { limit: number; threshold: number; query: string },
+  ): UsageRow[] {
+    if (!rows.length) return [];
+    if (mode === 'limit') {
+      const limit = Math.max(1, Math.floor(criteria.limit ?? 0));
+      return rows.slice(0, limit);
+    }
+    if (mode === 'threshold') {
+      const threshold = Math.max(0, Math.floor(criteria.threshold ?? 0));
+      return rows.filter((row) => row.total >= threshold);
+    }
+    const normalizedQuery = (criteria.query ?? '').trim().toLowerCase();
+    if (!normalizedQuery) return rows;
+    return rows.filter((row) => row.userId.toLowerCase().includes(normalizedQuery));
+  }
+
+  private buildHistogramBuckets(rows: UsageRow[], binSize: number):
+    | { label: string; count: number; start: number; end: number }[]
+    | [] {
+    if (!rows.length) return [];
+    const totals = rows.map((row) => row.total);
+    const maxTotal = Math.max(...totals);
+    if (maxTotal < 0) return [];
+
+    const buckets: { label: string; count: number; start: number; end: number }[] = [];
+    for (let start = 0; start <= maxTotal; start += binSize) {
+      const end = start + binSize - 1;
+      const count = totals.filter((total) => total >= start && total <= end).length;
+      buckets.push({
+        label: `${start}〜${end}`,
+        count,
+        start,
+        end,
+      });
+    }
+    return buckets;
+  }
+
+  private ensurePositiveInteger(value: string | number, fallback: number): number {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.floor(parsed);
+    }
+    if (parsed === 0) return 0;
+    return fallback;
   }
 
   private saveBlob(blob: Blob, filename: string): void {
