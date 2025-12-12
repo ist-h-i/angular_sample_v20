@@ -1,27 +1,73 @@
-@if (messages && messages.length > 0) {
+@if (groupedMessages && groupedMessages.length > 0) {
   <div class="space-y-4">
-    @for (m of messages; track m) {
+    @for (group of groupedMessages; track group.anchor.timestamp + group.anchorIndex) {
+      @if (group.anchor.role !== 'user' && shouldShowProcessFor(group.anchorIndex, group.anchor.role)) {
+        <div class="thinking-inline-row">
+          <div class="thinking-inline">
+            <div class="thinking-inline__header">
+              <div class="thinking-inline__title">Final Process</div>
+              <button
+                type="button"
+                class="thinking-inline__toggle"
+                (click)="toggleFinalProcess()"
+                [attr.aria-expanded]="isFinalProcessExpanded()"
+                aria-label="Toggle final process details"
+              >
+                {{ finalProcessToggleIcon() }}
+              </button>
+            </div>
+            @if (isFinalProcessExpanded()) {
+              <div class="thinking-inline__body">
+                @if (hasFinalProcessPhases()) {
+                  <div class="thinking-inline__phases">
+                    @for (phase of finalThinkingProcess?.phases ?? []; track phase.title + $index) {
+                      <div class="thinking-inline__phase">
+                        <div class="thinking-inline__phase-title">{{ phase.title }}</div>
+                        <ul class="thinking-inline__phase-steps">
+                          @for (step of phase.steps; track $index) {
+                            <li>{{ step }}</li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <pre class="thinking-inline__raw">{{ finalThinkingProcess?.raw }}</pre>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
       <div class="flex items-start gap-3 message-row">
         <div class="w-full">
           <!-- Bubble container -->
           <div
             class="flex"
-            [class.justify-start]="m.role !== 'user'"
-            [class.justify-end]="m.role === 'user'"
+            [class.justify-start]="group.anchor.role !== 'user'"
+            [class.justify-end]="group.anchor.role === 'user'"
           >
-            <article
-              [attr.aria-label]="'メッセージ: ' + m.content"
-              class="message inline-block max-w-[78%] break-words p-3 rounded-[12px] shadow-sm transition-transform duration-200 ease-out transform"
-              [class.bubble--user]="m.role === 'user'"
-              [class.bubble--assistant]="m.role !== 'user'"
-            >
-              <div class="text-sm whitespace-pre-wrap">{{ m.content }}</div>
-            </article>
+            <div class="message-stack" [class.items-end]="group.anchor.role === 'user'" [class.items-start]="group.anchor.role !== 'user'">
+              @for (m of group.items; track m.timestamp + $index) {
+                <article
+                  [attr.aria-label]="(m.role === 'reasoning' ? 'Reasoning' : 'Message') + ': ' + m.content"
+                  class="message inline-block max-w-[78%] break-words p-3 rounded-[12px] shadow-sm transition-transform duration-200 ease-out transform"
+                  [class.bubble--user]="m.role === 'user'"
+                  [class.bubble--assistant]="m.role === 'assistant'"
+                  [class.bubble--reasoning]="m.role === 'reasoning'"
+                >
+                  @if (m.role === 'reasoning') {
+                    <div class="message__label">Reasoning</div>
+                  }
+                  <div class="text-sm whitespace-pre-wrap">{{ m.content }}</div>
+                </article>
+              }
+            </div>
           </div>
         </div>
       </div>
     }
   </div>
 } @else {
-  <div class="text-gray-500 text-sm text-center mt-5">まだメッセージがありません</div>
+  <div class="text-gray-500 text-sm text-center mt-5">No messages yet</div>
 }

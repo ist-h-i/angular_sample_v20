@@ -1,38 +1,76 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, NgZone, computed, effect, inject } from '@angular/core';
-import { PrimaryButton } from '../../../../../shared/ui/primary-button/primary-button';
+import {
+  Component,
+  ElementRef,
+  ViewChild,
+  AfterViewInit,
+  NgZone,
+  computed,
+  effect,
+  inject,
+  HostListener,
+  signal,
+} from '@angular/core';
 import { Chat } from '../../ui/chat/chat';
 import type { Message } from '../../../../../shared/core/models/message.model';
-import { SelectedRequestStore } from '../../../../../shared/core/stores/selected-request.store';
+import {
+  SelectedRequestStore,
+  ThinkingProcessState,
+} from '../../../../../shared/core/stores/selected-request.store';
 import { RequestFacade } from '../../../../request-queue/components/pages/request-queue/request.facade';
+import { AiModelSelectionStore } from '../../../../../shared/core/stores/ai-model-selection.store';
 
 @Component({
   selector: 'app-chat-panel',
   standalone: true,
-  imports: [PrimaryButton, Chat],
+  imports: [Chat],
   templateUrl: './chat-panel.html',
   styleUrl: './chat-panel.scss',
 })
 export class ChatPanel implements AfterViewInit {
-  private readonly selectedStore = inject(SelectedRequestStore);
+  public readonly selectedStore = inject(SelectedRequestStore);
   private readonly requestFacade = inject(RequestFacade);
+  private readonly aiModelSelectionStore = inject(AiModelSelectionStore);
   constructor(private readonly ngZone: NgZone) {
     // Sync messages when selected request detail changes
     effect(() => {
       const detail = this.selectedStore.detail();
-      this.messages = detail?.messages ?? [];
+      const nextMessages = detail?.messages ?? [];
+      const apply = () => this.messages.set(nextMessages);
+      if (typeof queueMicrotask === 'function') {
+        queueMicrotask(apply);
+      } else {
+        Promise.resolve().then(apply);
+      }
     });
   }
 
-  public messages: Message[] = [];
+  public readonly messages = signal<Message[]>([]);
   public draft = '';
   public inputValue = '';
+  public selectedModel = 'gpt-4';
+  public modelDropdownOpen = false;
+  readonly modelOptions = [
+    { label: 'GPT-4', value: 'gpt-4' },
+    { label: 'GPT-3.5', value: 'gpt-3.5' },
+    { label: 'Gemini', value: 'gemini' },
+  ];
 
   // Header bindings
   readonly currentTitle = computed(() => this.selectedStore.detail()?.title ?? 'リクエストを選択してください');
   readonly currentStatus = computed(() => this.selectedStore.detail()?.status ?? '-');
+  readonly finalThinkingProcess = computed<ThinkingProcessState | null>(() => {
+    const process = this.selectedStore.thinkingProcess();
+    if (!process || process.isStreaming) return null;
+    if (!process.raw?.trim() && !(process.phases?.length ?? 0)) {
+      return null;
+    }
+    return process;
+  });
 
   @ViewChild('userInput', { read: ElementRef, static: true })
   userInputRef!: ElementRef<HTMLTextAreaElement>;
+  @ViewChild('modelShell', { read: ElementRef, static: true })
+  modelShellRef!: ElementRef<HTMLDivElement>;
 
   ngAfterViewInit(): void {
     // Initial resize after view init
@@ -61,6 +99,44 @@ export class ChatPanel implements AfterViewInit {
     this.trySend();
   }
 
+  toggleModelDropdown(): void {
+    this.modelDropdownOpen = !this.modelDropdownOpen;
+  }
+
+  selectModel(value: string): void {
+    this.selectedModel = value;
+    this.modelDropdownOpen = false;
+  }
+
+  onModelTriggerKeydown(event: KeyboardEvent): void {
+    if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.modelDropdownOpen = true;
+      return;
+    }
+    if (event.key === 'Escape') {
+      this.modelDropdownOpen = false;
+    }
+  }
+
+  onModelOptionKeydown(event: KeyboardEvent, value: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.selectModel(value);
+    }
+  }
+
+  get selectedModelLabel(): string {
+    return this.modelOptions.find((option) => option.value === this.selectedModel)?.label ?? this.selectedModel;
+  }
+
+  @HostListener('document:click', ['$event'])
+  handleClickOutside(event: MouseEvent): void {
+    if (!this.modelDropdownOpen) return;
+    if (this.modelShellRef?.nativeElement.contains(event.target as Node)) return;
+    this.modelDropdownOpen = false;
+  }
+
   public send(): void {
     this.trySend();
   }
@@ -85,10 +161,11 @@ export class ChatPanel implements AfterViewInit {
       content: message,
       timestamp: new Date().toISOString(),
     };
-    this.messages = [...this.messages, newMsg];
+    this.messages.update((existing) => [...existing, newMsg]);
 
     const historyId = this.selectedStore.selectedId() ?? null;
-    void this.requestFacade.submitRequest(message, historyId).catch((error) => {
+    const aiModelId = this.aiModelSelectionStore.selectedModelId();
+    void this.requestFacade.submitRequest(message, historyId, aiModelId).catch((error) => {
       console.error('Failed to send message request', error);
     });
   }
