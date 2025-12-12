@@ -55,8 +55,14 @@ export interface AdminDefaultModel {
   updatedAt?: string;
 }
 
+export interface AdminUserThread {
+  userId: string;
+  statusCounts: Record<string, number>;
+}
+
 export interface AdminInitialResponse {
   users: AdminUserRecord[];
   models: AdminModel[];
   defaultModels: AdminDefaultModel[];
+  threads: AdminUserThread[];
 }

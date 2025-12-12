@@ -385,6 +385,178 @@
         </div>
       </section>
 
+      <section class="card">
+        <div class="section-header">
+          <div>
+            <p class="section-kicker">Usage</p>
+            <h2 class="section-title">リクエスト使用状況</h2>
+            <p class="section-helper">
+              GET /admin で取得した threads 集計をもとに、10万人規模の利用を念頭に置いたサマリを確認できます。
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn-secondary" (click)="handleUsageCsvDownload()">
+              使用状況CSVダウンロード
+            </button>
+          </div>
+        </div>
+
+        <div class="usage-meta">
+          <span>集計ユーザー数: {{ usageRows().length }}</span>
+          <span>リクエスト総数: {{ totalRequests() | number }}</span>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>集計</th>
+                @for (status of statusKeys(); track status) {
+                  <th>{{ status }}</th>
+                }
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>全ユーザー合計</td>
+                @for (status of statusKeys(); track status) {
+                  <td class="text-right">{{ statusTotals()[status] ?? 0 }}</td>
+                }
+                <td class="text-right">{{ totalRequests() }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="usage-mode-panel">
+          <div class="mode-toggle">
+            <button
+              type="button"
+              class="btn-secondary"
+              [class.active]="usageMode() === 'limit'"
+              (click)="setUsageMode('limit')"
+            >
+              表示人数を指定
+            </button>
+            <button
+              type="button"
+              class="btn-secondary"
+              [class.active]="usageMode() === 'threshold'"
+              (click)="setUsageMode('threshold')"
+            >
+              最低リクエスト数を指定
+            </button>
+            <button
+              type="button"
+              class="btn-secondary"
+              [class.active]="usageMode() === 'search'"
+              (click)="setUsageMode('search')"
+            >
+              ユーザーIDで絞り込み
+            </button>
+          </div>
+
+          @if (usageMode() === 'limit') {
+            <div class="mode-input">
+              <label class="form-label">表示人数</label>
+              <input
+                type="number"
+                min="1"
+                class="form-input"
+                [value]="topLimit()"
+                (input)="updateTopLimit($any($event.target).value)"
+              />
+            </div>
+          } @else if (usageMode() === 'threshold') {
+            <div class="mode-input">
+              <label class="form-label">最低リクエスト数</label>
+              <input
+                type="number"
+                min="0"
+                class="form-input"
+                [value]="thresholdCount()"
+                (input)="updateThresholdCount($any($event.target).value)"
+              />
+            </div>
+          } @else {
+            <div class="mode-input">
+              <label class="form-label">ユーザーID検索 (部分一致)</label>
+              <input
+                type="text"
+                class="form-input"
+                placeholder="u-1001"
+                [value]="userQuery()"
+                (input)="updateUserQuery($any($event.target).value)"
+              />
+            </div>
+          }
+        </div>
+
+        <div class="usage-summary">
+          表示対象: {{ filteredUsageSummary().count }} 人／合計 {{ filteredUsageSummary().total | number }} リクエスト
+        </div>
+
+        @if (filteredUsageRows().length) {
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>User ID</th>
+                  @for (status of statusKeys(); track status) {
+                    <th>{{ status }}</th>
+                  }
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of filteredUsageRows(); track row.userId) {
+                  <tr>
+                    <td class="font-mono text-sm">{{ row.userId }}</td>
+                    @for (status of statusKeys(); track status) {
+                      <td class="text-right">{{ row.statusCounts[status] ?? 0 }}</td>
+                    }
+                    <td class="text-right font-semibold">{{ row.total }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="text-sm text-slate-600">該当するユーザーはありません。</p>
+        }
+
+        <div class="histogram-controls">
+          <label class="form-label">ヒストグラムの集計幅</label>
+          <input
+            type="number"
+            min="1"
+            class="form-input"
+            [value]="histogramBinSize()"
+            (input)="updateHistogramBinSize($any($event.target).value)"
+          />
+        </div>
+
+        @if (histogramBuckets().length) {
+          <div class="histogram">
+            @for (bucket of histogramBuckets(); track bucket.label) {
+              <div class="histogram-row">
+                <div class="histogram-label">{{ bucket.label }}</div>
+                <div class="histogram-bar-wrapper">
+                  <div
+                    class="histogram-bar"
+                    [style.width.%]="maxHistogramCount() ? (bucket.count / maxHistogramCount()) * 100 : 0"
+                  ></div>
+                </div>
+                <div class="histogram-count">{{ bucket.count }} 人</div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-sm text-slate-600">ヒストグラムを作成できるデータがありません。</p>
+        }
+      </section>
+
       @if (!hasData()) {
         <div class="note">データがありません。必要な情報を追加してください。</div>
       }
