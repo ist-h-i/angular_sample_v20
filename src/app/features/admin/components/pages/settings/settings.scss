@@ -172,6 +172,134 @@
   color: #b91c1c;
 }
 
+.usage-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.usage-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+.usage-block {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.usage-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.usage-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.usage-meta {
+  font-size: 13px;
+  color: #475569;
+}
+
+.usage-helper {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.usage-mode-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.usage-mode-btn {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #0f172a;
+}
+
+.usage-mode-btn.is-active {
+  background: #0f172a;
+  color: #fff;
+  border-color: #0f172a;
+}
+
+.usage-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.compact-table th,
+.compact-table td {
+  padding: 6px 8px;
+}
+
+.usage-histogram {
+  background: #fff;
+}
+
+.histogram-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.histogram-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.histogram-row {
+  display: grid;
+  grid-template-columns: 1fr 4fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.histogram-label {
+  font-size: 12px;
+  color: #334155;
+}
+
+.histogram-bar-track {
+  position: relative;
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.histogram-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #0f172a, #475569);
+}
+
+.histogram-count {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

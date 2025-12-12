@@ -4,6 +4,7 @@ import { AdminStore } from '../../../../../shared/core/stores/admin.store';
 import type {
   AdminDefaultModel,
   AdminModel,
+  AdminThreadRecord,
   AdminUserRecord,
 } from '../../../../../shared/core/models/admin.model';
 
@@ -35,6 +36,14 @@ interface DefaultModelFormState {
   allowedSpend: string;
 }
 
+type UsageMode = 'limit' | 'threshold' | 'search';
+
+interface UserUsageRow {
+  userId: string;
+  statuses: Record<string, number>;
+  total: number;
+}
+
 @Component({
   selector: 'app-settings',
   standalone: true,
@@ -52,13 +61,106 @@ export class Settings implements OnInit {
   protected readonly users = this.adminStore.users;
   protected readonly models = this.adminStore.models;
   protected readonly defaultModels = this.adminStore.defaultModels;
+  protected readonly threads = this.adminStore.threads;
   protected readonly hasData = computed(
-    () => !!this.users().length || !!this.models().length || !!this.defaultModels().length,
+    () =>
+      !!this.users().length ||
+      !!this.models().length ||
+      !!this.defaultModels().length ||
+      !!this.threads().length,
   );
 
   protected readonly userForm = signal<UserFormState>(this.blankUserForm());
   protected readonly modelForm = signal<ModelFormState>(this.blankModelForm());
   protected readonly defaultModelForm = signal<DefaultModelFormState>(this.blankDefaultModelForm());
+
+  protected readonly usageMode = signal<UsageMode>('limit');
+  protected readonly displayCount = signal(10);
+  protected readonly minRequests = signal(10);
+  protected readonly searchUserId = signal('');
+  protected readonly histogramBinSize = signal(10);
+
+  protected readonly usageRows = computed<UserUsageRow[]>(() =>
+    this.threads().map((entry) => {
+      const statuses = this.extractStatusCounts(entry);
+      return {
+        userId: entry.userId,
+        statuses,
+        total: this.totalFromStatuses(statuses),
+      };
+    }),
+  );
+
+  protected readonly statusKeys = computed(() => {
+    const keys = new Set<string>();
+    this.usageRows().forEach((row) => {
+      Object.keys(row.statuses).forEach((key) => keys.add(key));
+    });
+    return Array.from(keys).sort();
+  });
+
+  protected readonly statusTotals = computed<Record<string, number>>(() => {
+    const totals: Record<string, number> = {};
+    this.statusKeys().forEach((key) => (totals[key] = 0));
+    this.usageRows().forEach((row) => {
+      Object.entries(row.statuses).forEach(([status, value]) => {
+        totals[status] = (totals[status] ?? 0) + value;
+      });
+    });
+    return totals;
+  });
+
+  protected readonly overallRequestsTotal = computed(() =>
+    Object.values(this.statusTotals()).reduce((sum, value) => sum + value, 0),
+  );
+
+  protected readonly sortedUsageRows = computed(() =>
+    [...this.usageRows()].sort((a, b) => b.total - a.total || a.userId.localeCompare(b.userId)),
+  );
+
+  protected readonly displayedUsageRows = computed(() => {
+    const mode = this.usageMode();
+    const baseRows = this.sortedUsageRows();
+    if (mode === 'limit') {
+      const count = Math.max(0, this.displayCount());
+      return baseRows.slice(0, count || baseRows.length);
+    }
+    if (mode === 'threshold') {
+      const minTotal = Math.max(0, this.minRequests());
+      return baseRows.filter((row) => row.total >= minTotal);
+    }
+    const keyword = this.searchUserId().trim().toLowerCase();
+    if (!keyword) return baseRows;
+    return baseRows.filter((row) => row.userId.toLowerCase().includes(keyword));
+  });
+
+  protected readonly displayedUserCount = computed(() => this.displayedUsageRows().length);
+
+  protected readonly displayedRequestsTotal = computed(() =>
+    this.displayedUsageRows().reduce((sum, row) => sum + row.total, 0),
+  );
+
+  protected readonly histogramBuckets = computed(() => {
+    const binSize = Math.max(1, this.histogramBinSize());
+    const totals = this.usageRows().map((row) => row.total);
+    if (!totals.length) return [] as { start: number; end: number; count: number }[];
+    const max = Math.max(...totals);
+    const bucketCount = Math.floor(max / binSize) + 1;
+    const buckets = Array.from({ length: bucketCount }, (_, idx) => ({
+      start: idx * binSize,
+      end: idx * binSize + binSize - 1,
+      count: 0,
+    }));
+    totals.forEach((total) => {
+      const index = Math.min(Math.floor(total / binSize), buckets.length - 1);
+      buckets[index].count += 1;
+    });
+    return buckets;
+  });
+
+  protected readonly maxHistogramCount = computed(() =>
+    Math.max(0, ...this.histogramBuckets().map((bucket) => bucket.count)),
+  );
 
   ngOnInit(): void {
     void this.adminStore.load();
@@ -242,6 +344,34 @@ export class Settings implements OnInit {
     }
   }
 
+  protected async handleUsageCsvDownload(): Promise<void> {
+    const blob = await this.adminStore.downloadUsageCsv();
+    if (blob) {
+      this.saveBlob(blob, 'admin-usage.csv');
+    }
+  }
+
+  protected setUsageMode(mode: UsageMode): void {
+    this.usageMode.set(mode);
+  }
+
+  protected updateDisplayCount(value: string): void {
+    this.displayCount.set(this.parsePositiveInt(value));
+  }
+
+  protected updateMinRequests(value: string): void {
+    this.minRequests.set(this.parsePositiveInt(value));
+  }
+
+  protected updateSearchUserId(value: string): void {
+    this.searchUserId.set(value);
+  }
+
+  protected updateHistogramBinSize(value: string): void {
+    const parsed = this.parsePositiveInt(value);
+    this.histogramBinSize.set(parsed > 0 ? parsed : 1);
+  }
+
   protected trackById<T extends { id?: string; userId?: string }>(
     _index: number,
     item: T,
@@ -287,11 +417,32 @@ export class Settings implements OnInit {
     };
   }
 
+  private extractStatusCounts(entry: AdminThreadRecord): Record<string, number> {
+    return Object.entries(entry).reduce((acc, [key, value]) => {
+      if (key === 'userId') return acc;
+      const numericValue = typeof value === 'number' ? value : Number(value);
+      if (Number.isFinite(numericValue)) {
+        acc[key] = numericValue;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+  }
+
+  private totalFromStatuses(statuses: Record<string, number>): number {
+    return Object.values(statuses).reduce((sum, value) => sum + value, 0);
+  }
+
   private parseNumber(value: string): number | undefined {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
     const num = Number(trimmed);
     return Number.isFinite(num) ? num : undefined;
+  }
+
+  private parsePositiveInt(value: string | number): number {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+    return Math.floor(parsed);
   }
 
   private parseIds(input: string): string[] {

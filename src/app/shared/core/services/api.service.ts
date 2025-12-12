@@ -14,6 +14,7 @@ import type {
   AdminInitialResponse,
   AdminModel,
   AdminModelPayload,
+  AdminThreadRecord,
   AdminUserPayload,
   AdminUserRecord,
 } from '../models/admin.model';
@@ -309,6 +310,12 @@ Phase 2: Structure the Explanation
     },
   ];
 
+  private mockAdminThreads: AdminThreadRecord[] = [
+    { userId: 'u-1001', completed: 48, pending: 3 },
+    { userId: 'u-1002', completed: 12, pending: 1, failed: 1 },
+    { userId: 'u-1003', completed: 0, pending: 0 },
+  ];
+
   private promote(s: RequestStatus): RequestStatus {
     if (s === 'pending') return Math.random() > 0.6 ? 'processing' : 'pending';
     if (s === 'processing') return Math.random() > 0.7 ? 'completed' : 'processing';
@@ -341,6 +348,7 @@ Phase 2: Structure the Explanation
       defaultModels: this.mockAdminDefaultModels.map((entry) =>
         this.cloneAdminDefaultModel(entry),
       ),
+      threads: this.mockAdminThreads.map((entry) => ({ ...entry })),
     };
   }
 
@@ -671,6 +679,27 @@ Phase 2: Structure the Explanation
       return of(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     }
     return this.http.get('/admin/users', { responseType: 'blob' });
+  }
+
+  // GET /admin/usage.csv  Eusage metrics download
+  downloadAdminUsageCsv(): Observable<Blob> {
+    if (this.useMock) {
+      const statusKeys = Array.from(
+        this.mockAdminThreads.reduce((set, entry) => {
+          Object.keys(entry)
+            .filter((key) => key !== 'userId')
+            .forEach((key) => set.add(key));
+          return set;
+        }, new Set<string>()),
+      );
+      const header = ['userId', ...statusKeys].join(',');
+      const rows = this.mockAdminThreads.map((entry) =>
+        [entry.userId, ...statusKeys.map((key) => entry[key] ?? 0)].join(','),
+      );
+      const csv = [header, ...rows].join('\n');
+      return of(new Blob([csv], { type: 'text/csv' }));
+    }
+    return this.http.get('/admin/usage.csv', { responseType: 'blob' });
   }
 
   // POST /admin/uploadUser (multipart)
