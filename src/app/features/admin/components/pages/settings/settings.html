@@ -385,6 +385,219 @@
         </div>
       </section>
 
+      <section class="card">
+        <div class="section-header">
+          <div>
+            <p class="section-kicker">Usage</p>
+            <h2 class="section-title">使用状況</h2>
+            <p class="section-helper">バックエンドから返却されたスレッド数を集計し、CSV・ランキング・ヒストグラムで可視化します。</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn-secondary" (click)="handleUsageCsvDownload()">
+              使用状況CSVダウンロード
+            </button>
+          </div>
+        </div>
+
+        @if (threads().length) {
+          <div class="usage-summary-grid">
+            <div class="stat-block">
+              <p class="stat-label">ユーザー数</p>
+              <p class="stat-value">{{ threads().length }}</p>
+            </div>
+            <div class="stat-block">
+              <p class="stat-label">総リクエスト</p>
+              <p class="stat-value">{{ totalRequestCount() }}</p>
+            </div>
+          </div>
+
+          <div class="usage-grid">
+            <div class="usage-panel">
+              <div class="panel-header">
+                <h3 class="panel-title">ステータス別トータル</h3>
+              </div>
+              @if (statusKeys().length) {
+                <div class="table-wrapper">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>ステータス</th>
+                        <th class="text-right">合計</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (status of statusKeys(); track status) {
+                        <tr>
+                          <td class="font-mono text-xs">{{ status }}</td>
+                          <td class="text-right">{{ totalByStatus()[status] ?? 0 }}</td>
+                        </tr>
+                      }
+                      <tr class="font-semibold">
+                        <td>総リクエスト</td>
+                        <td class="text-right">{{ totalRequestCount() }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="text-sm text-slate-600">ステータスが検出されませんでした。</p>
+              }
+            </div>
+
+            <div class="usage-panel">
+              <div class="panel-header">
+                <h3 class="panel-title">リクエスト分布 (ヒストグラム)</h3>
+                <div class="flex items-center gap-2">
+                  <label class="form-label">集計幅</label>
+                  <input
+                    type="number"
+                    class="form-input w-24"
+                    [value]="histogramBinSize()"
+                    (input)="updateHistogramBinSize($any($event.target).value)"
+                  />
+                </div>
+              </div>
+              @if (histogram().buckets.length) {
+                <div class="table-wrapper">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>リクエスト数</th>
+                        <th class="text-right">ユーザー数</th>
+                        <th>割合</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (bucket of histogram().buckets; track bucket.range) {
+                        <tr>
+                          <td class="font-mono text-xs">{{ bucket.range }}</td>
+                          <td class="text-right">{{ bucket.count }}</td>
+                          <td>
+                            <div class="bar-track">
+                              <div
+                                class="bar-fill"
+                                [style.width.%]="
+                                  histogram().maxCount
+                                    ? (bucket.count / histogram().maxCount) * 100
+                                    : 0
+                                "
+                              ></div>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="text-sm text-slate-600">ヒストグラムを計算できるデータがありません。</p>
+              }
+            </div>
+          </div>
+
+          <div class="usage-panel usage-panel-full">
+            <div class="panel-header">
+              <h3 class="panel-title">リクエストが多いユーザー</h3>
+              <div class="mode-switch">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  [class.active]="topUsersMode() === 'topN'"
+                  (click)="setTopUsersMode('topN')"
+                >
+                  表示人数で絞る
+                </button>
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  [class.active]="topUsersMode() === 'threshold'"
+                  (click)="setTopUsersMode('threshold')"
+                >
+                  リクエスト数で絞る
+                </button>
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  [class.active]="topUsersMode() === 'search'"
+                  (click)="setTopUsersMode('search')"
+                >
+                  UIDで検索
+                </button>
+              </div>
+            </div>
+
+            <div class="usage-controls">
+              @if (topUsersMode() === 'topN') {
+                <label class="form-col">
+                  <span class="form-label">表示人数</span>
+                  <input
+                    type="number"
+                    class="form-input"
+                    [value]="topUsersLimit()"
+                    (input)="updateTopUsersLimit($any($event.target).value)"
+                  />
+                </label>
+              } @else if (topUsersMode() === 'threshold') {
+                <label class="form-col">
+                  <span class="form-label">下限リクエスト数</span>
+                  <input
+                    type="number"
+                    class="form-input"
+                    [value]="topUsersThreshold()"
+                    (input)="updateTopUsersThreshold($any($event.target).value)"
+                  />
+                </label>
+              } @else {
+                <label class="form-col">
+                  <span class="form-label">ユーザーID (部分一致)</span>
+                  <input
+                    type="text"
+                    class="form-input"
+                    [value]="topUsersQuery()"
+                    (input)="updateTopUsersQuery($any($event.target).value)"
+                  />
+                </label>
+              }
+            </div>
+
+            <p class="usage-meta">
+              表示人数: {{ topUsersView().rows.length }} / テーブル合計リクエスト: {{ topUsersView().displayedTotal }}
+            </p>
+
+            @if (topUsersView().rows.length) {
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>User ID</th>
+                      <th class="text-right">合計</th>
+                      @for (status of statusKeys(); track status) {
+                        <th class="text-right">{{ status }}</th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of topUsersView().rows; track row.userId) {
+                      <tr>
+                        <td class="font-mono text-xs">{{ row.userId }}</td>
+                        <td class="text-right font-semibold">{{ row.total }}</td>
+                        @for (status of statusKeys(); track status) {
+                          <td class="text-right">{{ row.statuses[status] ?? 0 }}</td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="text-sm text-slate-600">条件に一致するユーザーがいません。</p>
+            }
+          </div>
+        } @else {
+          <p class="text-sm text-slate-600">使用状況データがまだ取得されていません。</p>
+        }
+      </section>
+
       @if (!hasData()) {
         <div class="note">データがありません。必要な情報を追加してください。</div>
       }
