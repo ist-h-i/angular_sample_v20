@@ -16,6 +16,7 @@ import type {
   AdminModelPayload,
   AdminUserPayload,
   AdminUserRecord,
+  AdminUserThreadStats,
 } from '../models/admin.model';
 
 export interface CreateRequestPayload {
@@ -309,6 +310,21 @@ Phase 2: Structure the Explanation
     },
   ];
 
+  private mockAdminThreadStats: AdminUserThreadStats[] = [
+    {
+      userId: 'u-1001',
+      statuses: { completed: 180, pending: 4, failed: 2 },
+    },
+    {
+      userId: 'u-1002',
+      statuses: { completed: 60, pending: 1, processing: 3 },
+    },
+    {
+      userId: 'u-1003',
+      statuses: { pending: 2 },
+    },
+  ];
+
   private promote(s: RequestStatus): RequestStatus {
     if (s === 'pending') return Math.random() > 0.6 ? 'processing' : 'pending';
     if (s === 'processing') return Math.random() > 0.7 ? 'completed' : 'processing';
@@ -334,12 +350,19 @@ Phase 2: Structure the Explanation
     return { ...defaultModel, modelIds: [...defaultModel.modelIds] };
   }
 
+  private cloneAdminThreadStats(entry: AdminUserThreadStats): AdminUserThreadStats {
+    return { userId: entry.userId, statuses: { ...entry.statuses } };
+  }
+
   private buildAdminInitialResponse(): AdminInitialResponse {
     return {
       users: this.mockAdminUsers.map((user) => this.cloneAdminUser(user)),
       models: this.mockAdminModels.map((model) => ({ ...model })),
       defaultModels: this.mockAdminDefaultModels.map((entry) =>
         this.cloneAdminDefaultModel(entry),
+      ),
+      threads: this.mockAdminThreadStats.map((entry) =>
+        this.cloneAdminThreadStats(entry),
       ),
     };
   }

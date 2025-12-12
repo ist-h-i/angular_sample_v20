@@ -144,6 +144,10 @@
   background: #fff;
 }
 
+.form-input.w-24 {
+  width: 96px;
+}
+
 .form-check {
   display: inline-flex;
   align-items: center;
@@ -182,4 +186,86 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.usage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.usage-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.usage-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.usage-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.usage-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.usage-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.usage-controls .form-col {
+  min-width: 200px;
+}
+
+.histogram {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.histogram-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 80px;
+  align-items: center;
+  gap: 8px;
+}
+
+.histogram-label {
+  font-size: 12px;
+  color: #475569;
+}
+
+.histogram-bar {
+  position: relative;
+  background: #e2e8f0;
+  border-radius: 8px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.histogram-fill {
+  position: absolute;
+  inset: 0;
+  background: #0f172a;
+}
+
+.histogram-count {
+  font-size: 12px;
+  color: #0f172a;
+  text-align: right;
 }
