@@ -15,6 +15,17 @@
     aria-label="Request list"
     class="bg-white flex flex-col flex-1 gap-2 overflow-auto mx-2 min-h-0"
   >
+    @if (submittingPlaceholder()) {
+      <li>
+        <app-request
+          [request]="submittingPlaceholder()"
+          [selectedRequestId]="selectedRequestId()"
+          [isNew]="false"
+          [isSubmitting]="true"
+          [disableSelect]="true"
+        ></app-request>
+      </li>
+    }
     @if (requestsList.length) {
       @for (r of requestsList; track r.request_id) {
         <li>
@@ -22,12 +33,15 @@
             [request]="r"
             [selectedRequestId]="selectedRequestId()"
             [isNew]="highlightedRequestId() === r.request_id"
+            [isSubmitting]="submittingExistingId() === r.request_id && r.status !== 'pending' && r.status !== 'processing'"
             (selectRequest)="onSelectRequest($event)"
           ></app-request>
         </li>
       }
     } @else {
-      <li class="p-4 text-sm text-gray-500">No requests yet.</li>
+      @if (!submittingPlaceholder()) {
+        <li class="p-4 text-sm text-gray-500">No requests yet.</li>
+      }
     }
   </ul>
 

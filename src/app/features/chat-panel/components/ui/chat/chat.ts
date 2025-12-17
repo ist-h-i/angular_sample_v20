@@ -11,6 +11,12 @@ import type { ThinkingProcessState } from '../../../../../shared/core/stores/sel
 export class Chat implements OnChanges {
   @Input() messages: Message[] = [];
   @Input() finalThinkingProcess: ThinkingProcessState | null = null;
+  @Input() acceptedMessageKey: string | null = null;
+  @Input() acceptedMessageActive = false;
+  @Input() sendingMessageKey: string | null = null;
+  @Input() sendingMessageActive = false;
+  @Input() failedMessageKey: string | null = null;
+  @Input() failedMessageActive = false;
   groupedMessages: { items: Message[]; anchor: Message; anchorIndex: number }[] = [];
   private finalProcessExpanded = false;
 
@@ -28,6 +34,27 @@ export class Chat implements OnChanges {
     const process = this.finalThinkingProcess;
     if (!process || process.isStreaming) return false;
     return index === this.findLastAssistantIndex();
+  }
+
+  isAcceptedMessage(message: Message | null | undefined): boolean {
+    if (!message) return false;
+    if (message.role !== 'user') return false;
+    if (!this.acceptedMessageActive) return false;
+    return Boolean(this.acceptedMessageKey && this.acceptedMessageKey === message.timestamp);
+  }
+
+  isFailedMessage(message: Message | null | undefined): boolean {
+    if (!message) return false;
+    if (message.role !== 'user') return false;
+    if (!this.failedMessageActive) return false;
+    return Boolean(this.failedMessageKey && this.failedMessageKey === message.timestamp);
+  }
+
+  isSendingMessage(message: Message | null | undefined): boolean {
+    if (!message) return false;
+    if (message.role !== 'user') return false;
+    if (!this.sendingMessageActive) return false;
+    return Boolean(this.sendingMessageKey && this.sendingMessageKey === message.timestamp);
   }
 
   hasFinalProcessPhases(): boolean {

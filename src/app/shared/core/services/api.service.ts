@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, from } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, delay } from 'rxjs/operators';
 import type { InitialData } from '../models/initial-data.model';
 import type { RequestSummary } from '../models/request-summary.model';
 import type { RequestDetail } from '../models/request.model';
@@ -40,11 +40,26 @@ export interface RequestStatusResponse {
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly http: HttpClient) {
+    this.seedTimelines();
+  }
 
   // --- Mock setup (moved from facade) ---
   // Toggle to switch between mock and real API per method
   private readonly useMock = true;
+  private readonly mockDelays = {
+    // Simulate slower acceptance because backend does AI pre-processing first
+    createRequestMs: 18000,
+    networkStatusMs: 2800,
+    pendingToProcessingMinMs: 9000,
+    pendingToProcessingMaxMs: 15000,
+    processingToCompletedMinMs: 16000,
+    processingToCompletedMaxMs: 24000,
+  };
+  private mockStatusTimeline: Record<
+    string,
+    { processingAt: number; completedAt: number }
+  > = {};
 
   isMockMode(): boolean {
     return this.useMock;
@@ -309,6 +324,69 @@ Phase 2: Structure the Explanation
     },
   ];
 
+  private seedTimelines(): void {
+    if (!this.useMock) return;
+    for (const id of Object.keys(this.mockRequests)) {
+      this.resetTimeline(id);
+    }
+  }
+
+  private resetTimeline(id: string, offsetMs = 0): void {
+    const now = Date.now() + Math.max(0, offsetMs);
+    const toProcessing =
+      now +
+      this.randomBetween(
+        this.mockDelays.pendingToProcessingMinMs,
+        this.mockDelays.pendingToProcessingMaxMs,
+      );
+    const toCompleted =
+      toProcessing +
+      this.randomBetween(
+        this.mockDelays.processingToCompletedMinMs,
+        this.mockDelays.processingToCompletedMaxMs,
+      );
+    this.mockStatusTimeline[id] = { processingAt: toProcessing, completedAt: toCompleted };
+  }
+
+  private advanceMockStatuses(targetId?: string): void {
+    if (!this.useMock) return;
+    if (targetId) {
+      this.advanceMockStatus(targetId);
+      return;
+    }
+    for (const id of Object.keys(this.mockRequests)) {
+      this.advanceMockStatus(id);
+    }
+  }
+
+  private advanceMockStatus(id: string): void {
+    const cur = this.mockRequests[id];
+    if (!cur) return;
+    const timeline = this.mockStatusTimeline[id];
+    if (!timeline) return;
+    const now = Date.now();
+    let nextStatus = cur.status;
+    if (cur.status === 'pending' && now >= timeline.processingAt) {
+      nextStatus = 'processing';
+    }
+    if (cur.status === 'processing' && now >= timeline.completedAt) {
+      nextStatus = 'completed';
+    }
+    if (nextStatus === cur.status) return;
+    const updated = { ...cur, status: nextStatus, last_updated: new Date().toISOString() };
+    this.mockRequests[id] = updated;
+    const detail = this.mockDetails[id];
+    if (detail) {
+      detail.status = nextStatus;
+      detail.last_updated = updated.last_updated;
+    }
+  }
+
+  private randomBetween(min: number, max: number): number {
+    if (max <= min) return min;
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
   private promote(s: RequestStatus): RequestStatus {
     if (s === 'pending') return Math.random() > 0.6 ? 'processing' : 'pending';
     if (s === 'processing') return Math.random() > 0.7 ? 'completed' : 'processing';
@@ -412,12 +490,13 @@ Phase 2: Structure the Explanation
           last_updated: now,
         };
       }
+      this.resetTimeline(requestId, this.mockDelays.createRequestMs);
       return of({
         request_id: requestId,
         submitted_at: now,
         status_url: `/requests/${requestId}/status`,
         result_url: `/requests/${requestId}/result`,
-      });
+      }).pipe(delay(this.mockDelays.createRequestMs));
     }
     return this.http.post<CreateRequestResponse>('/requests', payload);
   }
@@ -435,6 +514,7 @@ Phase 2: Structure the Explanation
   // GET /requests/status — list of lightweight summaries for the current user
   getRequestsStatus(): Observable<RequestSummary[]> {
     if (this.useMock) {
+      this.advanceMockStatuses();
       const now = new Date().toISOString();
       const next: Record<string, RequestSummary> = {};
       for (const [id, r] of Object.entries(this.mockRequests)) {
@@ -449,6 +529,7 @@ Phase 2: Structure the Explanation
   // GET /requests/{id}
   getRequestById(id: string): Observable<RequestDetail> {
     if (this.useMock) {
+      this.advanceMockStatuses(id);
       const summary = this.mockRequests[id];
       const base = this.mockDetails[id];
       if (!summary || !base) {
@@ -500,49 +581,47 @@ Phase 2: Structure the Explanation
   // GET /requests/{id}/status
   getRequestStatusById(id: string): Observable<RequestStatusResponse> {
     if (this.useMock) {
+      this.advanceMockStatuses(id);
       const cur = this.mockRequests[id];
       if (!cur) {
         // When not found, simulate 404-like response by keeping status as failed
-        return of({ request_id: id, status: 'failed', last_updated: new Date().toISOString() });
+        return of({
+          request_id: id,
+          status: 'failed' as RequestStatus,
+          last_updated: new Date().toISOString(),
+        }).pipe(delay(this.mockDelays.networkStatusMs));
       }
-      const progressStatus = (status: RequestStatus): RequestStatus => {
-        if (status === 'pending') return 'processing';
-        if (status === 'processing') return 'completed';
-        return status;
-      };
-      const nextStatus: RequestStatus = progressStatus(cur.status);
-      const updated = { ...cur, status: nextStatus, last_updated: new Date().toISOString() };
-      this.mockRequests[id] = updated;
+      const updated = this.mockRequests[id];
       const detail = this.mockDetails[id];
-        if (detail) {
-          detail.status = nextStatus;
-          detail.last_updated = updated.last_updated;
-          if (nextStatus === 'completed' && !detail.messages) {
-            const ts = new Date().toISOString();
-            detail.messages = [
-              { role: 'user', content: detail.query_text, timestamp: ts },
+      if (updated?.status === 'completed' && detail && !detail.messages) {
+        const ts = new Date().toISOString();
+        detail.messages = [
+          { role: 'user', content: detail.query_text, timestamp: ts },
+          {
+            role: 'reasoning',
+            content: 'Drafting outline and selecting sources.',
+            timestamp: ts,
+            metadata: { stage: 'drafting' },
+          },
+          {
+            role: 'assistant',
+            content: 'This is a final generated response for your request.',
+            timestamp: ts,
+            annotations: [
               {
-                role: 'reasoning',
-                content: '回答のアウトラインを整理し、参照する情報源を確定しています。',
-                timestamp: ts,
-                metadata: { stage: 'drafting' },
+                url: 'https://example.com/article',
+                title: 'Example Article',
+                snippet: 'Excerpt from the source',
               },
-              {
-                role: 'assistant',
-                content: 'This is a final generated response for your request.',
-                timestamp: ts,
-                annotations: [
-                {
-                  url: 'https://example.com/article',
-                  title: 'Example Article',
-                  snippet: 'Excerpt from the source',
-                },
-              ],
-            },
-          ];
-        }
+            ],
+          },
+        ];
       }
-      return of({ request_id: id, status: updated.status, last_updated: updated.last_updated });
+      return of({
+        request_id: id,
+        status: (updated?.status ?? 'failed') as RequestStatus,
+        last_updated: updated?.last_updated ?? new Date().toISOString(),
+      }).pipe(delay(this.mockDelays.networkStatusMs));
     }
     return this.http.get<RequestStatusResponse>(`/requests/${encodeURIComponent(id)}/status`);
   }

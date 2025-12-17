@@ -1,12 +1,21 @@
 <article class="rq-card" aria-label="Request">
   <button
     type="button"
-    class="rq-card-inner bg-white rounded-xl p-4 shadow-md border border-slate-100 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-transform duration-150 w-full text-left"
+    class="rq-card-inner bg-white rounded-xl p-4 shadow-md border border-slate-100 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-transform duration-150 transition-colors w-full text-left relative overflow-hidden"
     (click)="onClick()"
+    [disabled]="disableSelect"
     [class.selected]="isSelected()"
-    [attr.aria-busy]="isBusy"
+    [class.is-busy]="isBusy"
+    [class.is-processing]="isProcessing"
+    [class.is-just-completed]="justCompleted"
+    [class.is-just-failed]="justFailed"
+    [class.is-submitting]="isSubmitting"
+    [attr.aria-busy]="isBusy ? 'true' : null"
     [class.is-new]="isNew"
   >
+    <div class="rq-progress" aria-hidden="true">
+      <div class="rq-progress__bar"></div>
+    </div>
     <div class="rq-card-grid flex items-center gap-4">
       <div class="rq-card-content flex-1 min-w-0">
         <header class="rq-card-header mb-2">
@@ -17,7 +26,7 @@
             {{ request?.title }}
           </h4>
 
-          @if (request?.last_updated) {
+          @if (request?.last_updated && !disableSelect) {
             <p class="rq-meta text-sm text-slate-500 mt-1">
               <time class="rq-updated text-xs" [attr.datetime]="request?.last_updated">
                 {{ request?.last_updated }}

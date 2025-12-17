@@ -55,7 +55,29 @@
                   [class.bubble--user]="m.role === 'user'"
                   [class.bubble--assistant]="m.role === 'assistant'"
                   [class.bubble--reasoning]="m.role === 'reasoning'"
+                  [class.message--sending]="isSendingMessage(m)"
+                  [class.message--accepted]="isAcceptedMessage(m)"
+                  [class.message--send-failed]="isFailedMessage(m)"
                 >
+                  @if (isSendingMessage(m)) {
+                    <span class="message__sending-mark" aria-hidden="true">
+                      <span class="message__sending-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </span>
+                    </span>
+                  }
+                  @if (isAcceptedMessage(m)) {
+                    <span class="message__accepted-mark" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" class="message__accepted-icon" focusable="false">
+                        <path d="M5 13.5 9.5 18 19 7" />
+                      </svg>
+                    </span>
+                  }
+                  @if (isFailedMessage(m)) {
+                    <span class="message__failed-mark" aria-hidden="true">!</span>
+                  }
                   @if (m.role === 'reasoning') {
                     <div class="message__label">Reasoning</div>
                   }
