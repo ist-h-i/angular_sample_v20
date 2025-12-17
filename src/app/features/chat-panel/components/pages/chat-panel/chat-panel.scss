@@ -198,3 +198,33 @@
   height: 1.25rem;
   transform: rotate(180deg);
 }
+
+.chat-panel__send-btn.is-sending {
+  cursor: progress;
+  background: linear-gradient(180deg, var(--accent-500), var(--accent-600));
+  box-shadow: var(--shadow-strong);
+}
+
+.chat-panel__send-spinner {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-top-color: rgba(255, 255, 255, 0.05);
+  animation: chatSendSpinner 900ms linear infinite;
+}
+
+@keyframes chatSendSpinner {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel__send-spinner {
+    animation: none;
+  }
+}

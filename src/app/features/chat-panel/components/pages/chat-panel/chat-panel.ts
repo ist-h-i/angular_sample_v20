@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   HostListener,
+  OnDestroy,
   signal,
 } from '@angular/core';
 import { Chat } from '../../ui/chat/chat';
@@ -26,7 +27,7 @@ import { AiModelSelectionStore } from '../../../../../shared/core/stores/ai-mode
   templateUrl: './chat-panel.html',
   styleUrl: './chat-panel.scss',
 })
-export class ChatPanel implements AfterViewInit {
+export class ChatPanel implements AfterViewInit, OnDestroy {
   public readonly selectedStore = inject(SelectedRequestStore);
   private readonly requestFacade = inject(RequestFacade);
   private readonly aiModelSelectionStore = inject(AiModelSelectionStore);
@@ -49,11 +50,19 @@ export class ChatPanel implements AfterViewInit {
   public inputValue = '';
   public selectedModel = 'gpt-4';
   public modelDropdownOpen = false;
+  public lastSentMessageKey: string | null = null;
+  public lastSentMessageSubmitting = false;
+  public lastSentMessageJustAccepted = false;
+  public lastSentMessageFailed = false;
+  public sendInFlight = false;
   readonly modelOptions = [
     { label: 'GPT-4', value: 'gpt-4' },
     { label: 'GPT-3.5', value: 'gpt-3.5' },
     { label: 'Gemini', value: 'gemini' },
   ];
+  private acceptTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private failTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private submittingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   // Header bindings
   readonly currentTitle = computed(() => this.selectedStore.detail()?.title ?? 'リクエストを選択してください');
@@ -75,6 +84,12 @@ export class ChatPanel implements AfterViewInit {
   ngAfterViewInit(): void {
     // Initial resize after view init
     this.ngZone.runOutsideAngular(() => setTimeout(() => this.resizeTextarea(), 0));
+  }
+
+  ngOnDestroy(): void {
+    this.clearAcceptTimeout();
+    this.clearFailTimeout();
+    this.clearSubmittingTimeout();
   }
 
   onInput(event: Event): void {
@@ -161,13 +176,22 @@ export class ChatPanel implements AfterViewInit {
       content: message,
       timestamp: new Date().toISOString(),
     };
+    const messageKey = newMsg.timestamp;
     this.messages.update((existing) => [...existing, newMsg]);
+    this.lastSentMessageKey = messageKey;
+    this.startSubmittingIndicator(messageKey);
+    this.lastSentMessageJustAccepted = false;
+    this.lastSentMessageFailed = false;
 
     const historyId = this.selectedStore.selectedId() ?? null;
     const aiModelId = this.aiModelSelectionStore.selectedModelId();
-    void this.requestFacade.submitRequest(message, historyId, aiModelId).catch((error) => {
-      console.error('Failed to send message request', error);
-    });
+    void this.requestFacade
+      .submitRequest(message, historyId, aiModelId)
+      .then(() => this.flashAccepted(messageKey))
+      .catch((error) => {
+        this.flashFailed(messageKey);
+        console.error('Failed to send message request', error);
+      });
   }
 
   private resizeTextarea(): void {
@@ -191,5 +215,71 @@ export class ChatPanel implements AfterViewInit {
         el.style.overflowY = scroll + buffer > maxHeight ? 'auto' : 'hidden';
       });
     });
+  }
+
+  private flashAccepted(messageKey: string): void {
+    this.stopSubmittingIndicator(messageKey);
+    this.lastSentMessageKey = messageKey;
+    this.lastSentMessageJustAccepted = true;
+    this.lastSentMessageFailed = false;
+    this.clearAcceptTimeout();
+    this.acceptTimeoutId = setTimeout(() => {
+      if (this.lastSentMessageKey === messageKey) {
+        this.lastSentMessageJustAccepted = false;
+      }
+    }, 450);
+  }
+
+  private flashFailed(messageKey: string): void {
+    this.stopSubmittingIndicator(messageKey);
+    this.lastSentMessageKey = messageKey;
+    this.lastSentMessageFailed = true;
+    this.lastSentMessageJustAccepted = false;
+    this.clearFailTimeout();
+    this.failTimeoutId = setTimeout(() => {
+      if (this.lastSentMessageKey === messageKey) {
+        this.lastSentMessageFailed = false;
+      }
+    }, 900);
+  }
+
+  private clearAcceptTimeout(): void {
+    if (this.acceptTimeoutId) {
+      clearTimeout(this.acceptTimeoutId);
+      this.acceptTimeoutId = null;
+    }
+  }
+
+  private clearFailTimeout(): void {
+    if (this.failTimeoutId) {
+      clearTimeout(this.failTimeoutId);
+      this.failTimeoutId = null;
+    }
+  }
+
+  private startSubmittingIndicator(messageKey: string): void {
+    this.sendInFlight = true;
+    this.lastSentMessageSubmitting = false;
+    this.clearSubmittingTimeout();
+    this.submittingTimeoutId = setTimeout(() => {
+      if (this.sendInFlight && this.lastSentMessageKey === messageKey) {
+        this.lastSentMessageSubmitting = true;
+      }
+    }, 150);
+  }
+
+  private stopSubmittingIndicator(messageKey?: string): void {
+    this.sendInFlight = false;
+    this.clearSubmittingTimeout();
+    if (!messageKey || this.lastSentMessageKey === messageKey) {
+      this.lastSentMessageSubmitting = false;
+    }
+  }
+
+  private clearSubmittingTimeout(): void {
+    if (this.submittingTimeoutId) {
+      clearTimeout(this.submittingTimeoutId);
+      this.submittingTimeoutId = null;
+    }
   }
 }

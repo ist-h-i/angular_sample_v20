@@ -24,6 +24,13 @@ interface MonitorEntry {
   mode: MonitorMode;
 }
 
+interface SubmittingDraft {
+  token: number;
+  startedAt: string;
+  title: string;
+  snippet: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class RequestFacade {
   private readonly _requests = signal<Record<string, RequestSummary>>({});
@@ -31,6 +38,11 @@ export class RequestFacade {
   private activityCounter = 0;
   private readonly _recentActivity = signal<{ id: string; token: number } | null>(null);
   readonly recentActivity = this._recentActivity.asReadonly();
+  private submittingCounter = 0;
+  private readonly _submittingDraft = signal<SubmittingDraft | null>(null);
+  readonly submittingDraft = this._submittingDraft.asReadonly();
+  private readonly _submittingExistingId = signal<string | null>(null);
+  readonly submittingExistingId = this._submittingExistingId.asReadonly();
 
   readonly requests = computed(() => this._requests());
 
@@ -112,18 +124,44 @@ export class RequestFacade {
     requestHistoryId: string | null,
     aiModelId: string | null = null,
   ): Promise<CreateRequestResponse> {
+    if (requestHistoryId) {
+      this._submittingExistingId.set(requestHistoryId);
+      this.recordRequestActivity(requestHistoryId);
+    }
+    if (!requestHistoryId) {
+      this.submittingCounter += 1;
+      this._submittingDraft.set({
+        token: this.submittingCounter,
+        startedAt: new Date().toISOString(),
+        title: this.buildTitleFromQuery(queryText),
+        snippet: queryText,
+      });
+    }
     const payload: CreateRequestPayload = {
       query_text: queryText,
       request_history_id: requestHistoryId,
       ai_model_id: aiModelId ?? undefined,
     };
-    const response = await firstValueFrom(this.api.createRequest(payload));
+    let response: CreateRequestResponse;
+    try {
+      response = await firstValueFrom(this.api.createRequest(payload));
+    } catch (error) {
+      if (requestHistoryId) {
+        this._submittingExistingId.set(null);
+      }
+      if (!requestHistoryId) {
+        this._submittingDraft.set(null);
+      }
+      throw error;
+    }
     if (requestHistoryId) {
       this.markExistingRequestAsPending(requestHistoryId, queryText, response.submitted_at);
       this.startChatMonitor(requestHistoryId);
+      this._submittingExistingId.set(null);
     } else {
       this.addPendingRequestSummary(response, queryText);
       this.startAutoMonitor(response.request_id);
+      this._submittingDraft.set(null);
     }
     return response;
   }

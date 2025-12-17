@@ -35,6 +35,19 @@ export class RequestQueue implements OnInit, OnDestroy {
   });
 
   protected readonly highlightedRequestId = signal<string | null>(null);
+  protected readonly submittingExistingId = this.facade.submittingExistingId;
+
+  protected readonly submittingPlaceholder = computed((): RequestSummary | null => {
+    const draft = this.facade.submittingDraft();
+    if (!draft) return null;
+    return {
+      request_id: `submitting-${draft.token}`,
+      title: draft.title,
+      snippet: draft.snippet,
+      status: 'pending',
+      last_updated: draft.startedAt,
+    };
+  });
 
   private readonly trackNewRequestsEffect = effect(() => {
     const list = this.requests();
