@@ -1,4 +1,5 @@
 import { Component, Input, ViewChild, ElementRef, AfterViewInit, HostListener, computed, inject } from '@angular/core';
+import { NotificationPreferenceStore } from '../../core/stores/notification-preference.store';
 import { RouterLink } from '@angular/router';
 import { InitialDataStore } from '../../core/stores/initial-data.store';
 
@@ -21,6 +22,7 @@ export class TopBar implements AfterViewInit {
   @ViewChild('topbar', { static: true })
   private topbarEl?: ElementRef<HTMLElement>;
 
+  private readonly notificationPreferences = inject(NotificationPreferenceStore);
   private readonly initialDataStore = inject(InitialDataStore);
   protected readonly isAdmin = computed(
     () => this.initialDataStore.initialData()?.user?.is_admin ?? false,
@@ -51,6 +53,10 @@ export class TopBar implements AfterViewInit {
       // Expose globally so sibling routes can consume it
       document.documentElement.style.setProperty('--topbar-height', `${height}px`);
     }
+  }
+
+  toggleNotifications(): void {
+    this.notificationPreferences.toggle();
   }
 
   onMediaLoaded(): void {
