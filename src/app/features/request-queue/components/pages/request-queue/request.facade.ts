@@ -28,6 +28,9 @@ interface MonitorEntry {
 export class RequestFacade {
   private readonly _requests = signal<Record<string, RequestSummary>>({});
   private readonly _monitors = new Map<string, MonitorEntry>();
+  private activityCounter = 0;
+  private readonly _recentActivity = signal<{ id: string; token: number } | null>(null);
+  readonly recentActivity = this._recentActivity.asReadonly();
 
   readonly requests = computed(() => this._requests());
 
@@ -339,6 +342,7 @@ export class RequestFacade {
       last_updated: lastUpdated,
     };
     this._requests.set(next);
+    this.recordRequestActivity(requestId);
   }
 
   private buildTitleFromQuery(queryText: string): string {
@@ -347,5 +351,11 @@ export class RequestFacade {
       return 'New Request';
     }
     return trimmed.length <= 48 ? trimmed : trimmed.slice(0, 48);
+  }
+
+  private recordRequestActivity(id: string): void {
+    if (!id) return;
+    this.activityCounter += 1;
+    this._recentActivity.set({ id, token: this.activityCounter });
   }
 }

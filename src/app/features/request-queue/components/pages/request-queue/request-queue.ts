@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { PrimaryButton } from '../../../../../shared/ui/primary-button/primary-button';
 import { SecondaryButton } from '../../../../../shared/ui/secondary-button/secondary-button';
 import { Request } from '../../ui/request/request';
@@ -9,13 +10,15 @@ import { SelectedRequestStore } from '../../../../../shared/core/stores/selected
 @Component({
   selector: 'app-request-queue',
   standalone: true,
-  imports: [PrimaryButton, SecondaryButton, Request],
+  imports: [CommonModule, PrimaryButton, SecondaryButton, Request],
   templateUrl: './request-queue.html',
   styleUrl: './request-queue.scss',
 })
-export class RequestQueue implements OnInit {
+export class RequestQueue implements OnInit, OnDestroy {
   private readonly facade = inject(RequestFacade);
   private readonly selectedStore = inject(SelectedRequestStore);
+  private readonly knownRequests = signal<Map<string, string | null>>(new Map());
+  private highlightTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   // Normalize facade store (record -> array)
   protected readonly requests = computed((): RequestSummary[] => {
@@ -28,6 +31,61 @@ export class RequestQueue implements OnInit {
       return Object.values(storeSnapshot || {}).map((v) => v as unknown as RequestSummary);
     } catch {
       return [];
+    }
+  });
+
+  protected readonly highlightedRequestId = signal<string | null>(null);
+
+  private readonly trackNewRequestsEffect = effect(() => {
+    const list = this.requests();
+    const previous = untracked(() => this.knownRequests());
+    const next = new Map<string, string | null>();
+
+    if (!list?.length) {
+      if (previous.size) this.knownRequests.set(next);
+      return;
+    }
+
+    if (!previous.size) {
+      for (const req of list) {
+        if (!req?.request_id) continue;
+        next.set(req.request_id, req.last_updated ?? null);
+      }
+      this.knownRequests.set(next);
+      return;
+    }
+
+    let highlightTarget: string | null = null;
+
+    for (const req of list) {
+      const id = req?.request_id;
+      if (!id) continue;
+      const updatedAt = req.last_updated ?? null;
+      const isNew = !previous.has(id);
+      const wasPendingRefreshed =
+        !isNew &&
+        req.status?.toLowerCase() === 'pending' &&
+        updatedAt !== previous.get(id);
+
+      if (isNew || wasPendingRefreshed) {
+        highlightTarget = id;
+      }
+
+      next.set(id, updatedAt);
+    }
+
+    this.knownRequests.set(next);
+
+    if (highlightTarget) {
+      this.setHighlightedRequest(highlightTarget);
+    }
+  });
+
+  private readonly highlightMessageActivityEffect = effect(() => {
+    const activity = this.facade.recentActivity();
+    const requestId = activity?.id ?? null;
+    if (requestId) {
+      this.setHighlightedRequest(requestId);
     }
   });
 
@@ -50,10 +108,8 @@ export class RequestQueue implements OnInit {
   protected readonly selectedRequestId = computed(() => this.selectedStore.selectedId());
 
   // trackBy helper
-  trackByCreated(index: number, item: Record<string, unknown> | undefined): string | number {
-    const PrimitiveKey: string | number | undefined =
-      (item?.['created'] as any) ?? (item?.['request_id'] as any);
-    return (PrimitiveKey as any) ?? index;
+  trackByCreated(index: number, item: RequestSummary | undefined): string | number {
+    return item?.request_id ?? index;
   }
 
   refreshClick(): void {
@@ -87,6 +143,28 @@ export class RequestQueue implements OnInit {
       if (id === displayedId) continue;
       this.facade.startAutoMonitor(id);
       this.facade.resetMonitorForRequest(id);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.trackNewRequestsEffect.destroy();
+    this.highlightMessageActivityEffect.destroy();
+    if (this.highlightTimeoutId) {
+      clearTimeout(this.highlightTimeoutId);
+      this.highlightTimeoutId = null;
+    }
+  }
+
+  private setHighlightedRequest(id: string | null): void {
+    this.highlightedRequestId.set(id);
+    if (this.highlightTimeoutId) {
+      clearTimeout(this.highlightTimeoutId);
+    }
+    if (id) {
+      this.highlightTimeoutId = setTimeout(() => {
+        this.highlightedRequestId.set(null);
+        this.highlightTimeoutId = null;
+      }, 1800);
     }
   }
 }

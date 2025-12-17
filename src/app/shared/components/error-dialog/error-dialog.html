@@ -1,0 +1,52 @@
+@if (error()) {
+  <div class="error-backdrop" role="presentation" (click)="close()"></div>
+  <section
+    class="error-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Error dialog"
+  >
+    <header class="dialog-header">
+      <div class="status-pill">
+        <div class="status-code">{{ error()?.status || 'ERR' }}</div>
+        <div class="status-text">{{ error()?.statusText || error()?.code || 'Error' }}</div>
+      </div>
+      <div class="header-meta">
+        <p class="eyebrow">エラーが発生しました</p>
+        <p class="title">{{ error()?.message || 'Unexpected error' }}</p>
+      </div>
+      <button type="button" class="close-btn" (click)="close()" aria-label="閉じる">
+        ×
+      </button>
+    </header>
+
+    <div class="dialog-body">
+      <div class="summary">
+        <p class="label">エラーコード</p>
+        <p class="value">{{ error()?.code || '不明' }}</p>
+      </div>
+
+      <div class="grid">
+        <div class="grid-item">
+          <p class="label">HTTP ステータス</p>
+          <p class="value">{{ error()?.status }} {{ error()?.statusText }}</p>
+        </div>
+        <div class="grid-item">
+          <p class="label">エラークラス名</p>
+          <p class="value">{{ error()?.name || 'N/A' }}</p>
+        </div>
+        <div class="grid-item">
+          <p class="label">リクエスト URL</p>
+          <p class="value">{{ error()?.url || '---' }}</p>
+        </div>
+      </div>
+
+      @if (error()?.details !== undefined && error()?.details !== null && error()?.details !== '') {
+        <div class="details">
+          <p class="label">詳細</p>
+          <pre class="details-box">{{ formatDetails(error()?.details) }}</pre>
+        </div>
+      }
+    </div>
+  </section>
+}
