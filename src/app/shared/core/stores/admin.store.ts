@@ -28,6 +28,7 @@ export class AdminStore {
   readonly users = computed(() => this._data()?.users ?? []);
   readonly models = computed(() => this._data()?.models ?? []);
   readonly defaultModels = computed(() => this._data()?.defaultModels ?? []);
+  readonly threads = computed(() => this._data()?.threads ?? []);
 
   constructor(private readonly api: ApiService) {}
 
@@ -36,7 +37,7 @@ export class AdminStore {
     this._isLoading.set(true);
     try {
       const payload = await firstValueFrom(this.api.getAdminInitialData());
-      this._data.set(payload ?? { users: [], models: [], defaultModels: [] });
+      this._data.set(payload ?? { users: [], models: [], defaultModels: [], threads: [] });
       this._error.set(null);
       this._actionMessage.set(null);
     } catch (err) {
@@ -160,6 +161,15 @@ export class AdminStore {
     }
   }
 
+  async downloadUsageCsv(): Promise<Blob | undefined> {
+    try {
+      return await firstValueFrom(this.api.downloadAdminUsageCsv());
+    } catch (err) {
+      this._error.set(err);
+      return undefined;
+    }
+  }
+
   async downloadEvents(): Promise<Blob | undefined> {
     try {
       return await firstValueFrom(this.api.getAdminEventsArchive());
@@ -178,7 +188,7 @@ export class AdminStore {
   }
 
   private updateData(updater: (data: AdminInitialResponse) => AdminInitialResponse): void {
-    const base = this._data() ?? { users: [], models: [], defaultModels: [] };
+    const base = this._data() ?? { users: [], models: [], defaultModels: [], threads: [] };
     this._data.set(updater(base));
   }
 

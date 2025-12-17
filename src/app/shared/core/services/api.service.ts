@@ -16,6 +16,7 @@ import type {
   AdminModelPayload,
   AdminUserPayload,
   AdminUserRecord,
+  AdminUserThreadSummary,
 } from '../models/admin.model';
 
 export interface CreateRequestPayload {
@@ -309,6 +310,14 @@ Phase 2: Structure the Explanation
     },
   ];
 
+  private mockAdminThreads: AdminUserThreadSummary[] = [
+    { userId: 'u-1001', completed: 320, pending: 6, processing: 2 },
+    { userId: 'u-1002', completed: 180, pending: 12, processing: 4 },
+    { userId: 'u-1003', completed: 20, pending: 1, failed: 2 },
+    { userId: 'u-1004', completed: 75, pending: 0, processing: 1, failed: 1 },
+    { userId: 'u-1005', completed: 210, pending: 8, processing: 3 },
+  ];
+
   private promote(s: RequestStatus): RequestStatus {
     if (s === 'pending') return Math.random() > 0.6 ? 'processing' : 'pending';
     if (s === 'processing') return Math.random() > 0.7 ? 'completed' : 'processing';
@@ -334,6 +343,16 @@ Phase 2: Structure the Explanation
     return { ...defaultModel, modelIds: [...defaultModel.modelIds] };
   }
 
+  private cloneAdminThread(entry: AdminUserThreadSummary): AdminUserThreadSummary {
+    const { userId, ...rest } = entry;
+    return { userId, ...rest };
+  }
+
+  private coerceThreadCount(value: unknown): number {
+    const num = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(num) ? num : 0;
+  }
+
   private buildAdminInitialResponse(): AdminInitialResponse {
     return {
       users: this.mockAdminUsers.map((user) => this.cloneAdminUser(user)),
@@ -341,6 +360,7 @@ Phase 2: Structure the Explanation
       defaultModels: this.mockAdminDefaultModels.map((entry) =>
         this.cloneAdminDefaultModel(entry),
       ),
+      threads: this.mockAdminThreads.map((entry) => this.cloneAdminThread(entry)),
     };
   }
 
@@ -671,6 +691,28 @@ Phase 2: Structure the Explanation
       return of(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     }
     return this.http.get('/admin/users', { responseType: 'blob' });
+  }
+
+  // GET /admin/usage  ECSV download for usage statistics
+  downloadAdminUsageCsv(): Observable<Blob> {
+    if (this.useMock) {
+      const statusKeys = Array.from(
+        new Set(
+          this.mockAdminThreads.flatMap((entry) =>
+            Object.keys(entry).filter((key) => key !== 'userId'),
+          ),
+        ),
+      );
+      const header = ['userId', ...statusKeys, 'total'].join(',');
+      const rows = this.mockAdminThreads.map((entry) => {
+        const counts = statusKeys.map((key) => this.coerceThreadCount(entry[key]));
+        const total = counts.reduce((sum, value) => sum + value, 0);
+        return [entry.userId, ...counts, total].join(',');
+      });
+      const csv = [header, ...rows].join('\n');
+      return of(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    }
+    return this.http.get('/admin/usage/csv', { responseType: 'blob' });
   }
 
   // POST /admin/uploadUser (multipart)
